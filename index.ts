@@ -1,6 +1,4 @@
-import { build } from 'bun';
-
-await build({
+await Bun.build({
   entrypoints: ['./src/main.ts'],
   outdir: './out',
 });
