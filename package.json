@@ -11,13 +11,10 @@
     "build": "bun build ./src/index.ts --outdir ./out --target bun",
     "server": "bun run ./src/index.ts",
     "server:watch": "bun --watch run ./src/index.ts",
-    "server:prod": "NODE_ENV=production bun run ./src/index.ts",
-    "deploy": "wrangler deploy --minify",
-    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
+    "server:prod": "NODE_ENV=production bun run ./src/index.ts"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "wrangler": "^4.19.1"
+    "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"
