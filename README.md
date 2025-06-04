@@ -6,13 +6,13 @@
 
 ```
 src/
-├── config.ts              # 配置文件 - 所有配置集中管理
+├── config.ts              # 配置文件 - 集中管理
 ├── services/
-│   ├── vectorStore.ts      # 向量存储服务 - Qdrant操作
-│   ├── queryService.ts     # 查询服务 - RAG查询功能
-│   └── agentService.ts     # Agent服务 - AI工具调用
-├── app.ts                  # 应用程序主类 - 统一API接口
-└── main.ts                 # 演示入口 - 功能演示
+│   ├── vectorStore.ts      # 向量存储服务 - Qdrant related
+│   ├── queryService.ts     # 查询服务 - 基础RAG查询功能
+│   └── agentService.ts     # Agent服务 - Agentic查询
+├── app.ts                  # 应用程序主类 - 统一封装API
+└── main.ts                 # 功能演示
 ```
 
 ## 🚀 快速开始
@@ -113,7 +113,7 @@ export const DATASET_CONFIGS = {
 export const OPENAI_CONFIG = {
   apiKey: process.env.OPENAI_API_KEY!,
   model: 'gpt-4o',                    // LLM模型
-  embedModel: 'text-embedding-3-small', // 嵌入模型（支持中文）
+  embedModel: 'text-embedding-3-small', // 嵌入模型（不要使用 huggingface，hf不支持中文）
   temperature: 0,
 };
 ```
@@ -150,36 +150,10 @@ api.get('/status', async (c) => {
 });
 ```
 
-## 🎯 核心优化
-
-### 1. **代码组织**
-- ✅ 配置集中管理
-- ✅ 服务分层架构
-- ✅ 统一API接口
-- ✅ 移除冗余代码
-
-### 2. **功能模块化**
-- ✅ VectorStoreService - 向量存储操作
-- ✅ QueryService - 查询和检索
-- ✅ AgentService - AI工具调用
-- ✅ RAGApplication - 统一应用接口
-
-### 3. **API友好设计**
-- ✅ 清晰的方法签名
-- ✅ 标准化的返回格式
-- ✅ 错误处理机制
-- ✅ TypeScript类型支持
-
-### 4. **性能优化**
-- ✅ 索引缓存管理
-- ✅ 连接复用
-- ✅ 流式输出支持
-- ✅ 批量操作支持
-
 ## 📊 支持的数据集
 
-- **机器学习** (`machine_learning`) - 机器学习课程内容
-- **价格指数统计** (`price_index_statistics`) - 各类价格指数数据
+- **机器学习** (`machine_learning`) - 机器学习课程全部视频内容转写，约 39w 字
+- **价格指数统计** (`price_index_statistics`) -  国家统计局各类价格指数数据(近 13 个月)，共 5 个 table
 
 ## 🛠️ 技术栈
 
@@ -189,14 +163,6 @@ api.get('/status', async (c) => {
 - **TypeScript** - 类型安全
 - **Bun** - 运行时和包管理器
 
-## 📈 未来扩展
-
-- [ ] Hono API集成
-- [ ] 更多数据集支持
-- [ ] 实时索引更新
-- [ ] 用户权限管理
-- [ ] 查询历史记录
-- [ ] 性能监控面板
 
 
 
