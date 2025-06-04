@@ -2,6 +2,8 @@
 
 基于LlamaIndex.TS + Qdrant Cloud(Vector DB) + OpenAI的RAG（检索增强生成）应用程序，支持多数据集、混合 AI Agent功能（rag 之外的问题可路由到不同的 tool）。
 
+**🆕 现已提供完整的 RESTful API 服务！**
+
 ## 🏗️ 代码结构
 
 ```
@@ -11,8 +13,12 @@ src/
 │   ├── vectorStore.ts      # 向量存储服务 - Qdrant related
 │   ├── queryService.ts     # 查询服务 - 基础RAG查询功能
 │   └── agentService.ts     # Agent服务 - Agentic查询
+├── api/
+│   ├── server.ts           # API服务器 - Hono REST API
+│   └── docs.ts             # API文档 - 交互式文档
 ├── app.ts                  # 应用程序主类 - 统一封装API
-└── main.ts                 # 功能演示
+├── main.ts                 # 功能演示
+└── server.ts               # API服务器启动入口
 ```
 
 ## 🚀 快速开始
@@ -27,6 +33,7 @@ cp .env.example .env
 OPENAI_API_KEY=your_openai_api_key
 QDRANT_URL=your_qdrant_cloud_url
 QDRANT_API_KEY=your_qdrant_api_key
+PORT=3000  # API服务器端口
 ```
 
 ### 2. 安装依赖
@@ -35,55 +42,80 @@ QDRANT_API_KEY=your_qdrant_api_key
 bun install
 ```
 
-### 3. 运行演示
+### 3. 启动方式
+
+#### 方式一：API服务器模式（推荐）
 
 ```bash
-bun src/main.ts
+# 启动API服务器
+bun run server
+
+# 开发模式（自动重启）
+bun run server:watch
+
+# 生产模式
+bun run server:prod
 ```
 
-## 📚 API使用
+启动后访问：
+- **API文档**: http://localhost:3000
+- **健康检查**: http://localhost:3000/health
+- **应用状态**: http://localhost:3000/status
 
-### 基础导入
+#### 方式二：命令行演示模式
+
+```bash
+# 运行功能演示
+bun run dev
+
+# 开发模式（自动重启）
+bun run dev:watch
+```
+
+## 📚 SDK式使用
+
+除了 REST API，你还可以直接导入使用：
 
 ```typescript
 import { app } from './src/app';
-```
 
-### 核心功能
-
-```typescript
-// 1. 初始化应用
+// 初始化
 await app.initialize();
 
-// 2. 基础查询
-const result = await app.query('查询内容', 'price_index_statistics', {
+// 基础查询
+const result = await app.query('{查询内容}', 'price_index_statistics', {
   similarityTopK: 5,
   includeSourceNodes: true
 });
 
-// 3. 文档检索（不生成回答）
-const retrieval = await app.retrieve('查询内容', 'price_index_statistics');
+// Agent查询
+const agentResult = await app.agentQuery('{查询内容}并计算{123*456}');
 
-// 4. AI Agent查询（支持工具调用）
-const agentResult = await app.agentQuery('查询内容并计算123*456');
-
-// 5. 流式Agent查询
-for await (const chunk of app.agentQueryStream('查询内容')) {
+// 流式Agent查询
+for await (const chunk of app.agentQueryStream('{查询内容}')) {
   process.stdout.write(chunk);
 }
 
-// 6. 跨数据集查询
-const crossResults = await app.crossDatasetQuery('查询内容', [
+// 跨数据集查询
+const crossResults = await app.crossDatasetQuery('{查询内容}', [
   'price_index_statistics', 
   'machine_learning'
 ]);
 
-// 7. 获取应用状态
+// 获取应用状态
 const status = await app.getStatus();
+```
 
-// 8. 管理功能
-await app.rebuildIndex('price_index_statistics');
-await app.deleteCollection('price_index_statistics');
+## 🧪 API测试
+
+提供了简单的测试脚本：
+
+```bash
+# 启动API服务器（另一个终端）
+bun run server
+
+# 运行API测试
+node test-api.js
 ```
 
 ## 🔧 配置管理
@@ -118,38 +150,6 @@ export const OPENAI_CONFIG = {
 };
 ```
 
-## 🌐 API化准备
-
-当前代码结构已为API化做好准备，可以轻松集成到Hono框架：
-
-```typescript
-// 示例：Hono路由集成
-import { Hono } from 'hono';
-import { app } from './src/app';
-
-const api = new Hono();
-
-// 查询接口
-api.post('/query', async (c) => {
-  const { query, dataset, options } = await c.req.json();
-  const result = await app.query(query, dataset, options);
-  return c.json(result);
-});
-
-// Agent接口
-api.post('/agent', async (c) => {
-  const { query, dataset } = await c.req.json();
-  const result = await app.agentQuery(query, dataset);
-  return c.json({ response: result });
-});
-
-// 状态接口
-api.get('/status', async (c) => {
-  const status = await app.getStatus();
-  return c.json(status);
-});
-```
-
 ## 📊 支持的数据集
 
 - **机器学习** (`machine_learning`) - 机器学习课程全部视频内容转写，约 39w 字
@@ -161,9 +161,4 @@ api.get('/status', async (c) => {
 - **Qdrant Cloud** - 向量数据库
 - **OpenAI** - LLM和嵌入模型
 - **TypeScript** - 类型安全
-- **Bun** - 运行时和包管理器
-
-
-
-
-
+- **Bun** - 运行时和包管理器 

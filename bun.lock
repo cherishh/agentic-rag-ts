@@ -4,6 +4,7 @@
     "": {
       "name": "rag-agentic",
       "dependencies": {
+        "@hono/node-server": "^1.14.3",
         "@llamaindex/huggingface": "^0.1.12",
         "@llamaindex/openai": "^0.4.3",
         "@llamaindex/qdrant": "^0.1.18",
@@ -11,6 +12,7 @@
         "@llamaindex/workflow": "^1.1.6",
         "dotenv": "^16.5.0",
         "global-agent": "^3.0.0",
+        "hono": "^4.7.11",
         "https-proxy-agent": "^7.0.6",
         "llamaindex": "^0.11.6",
         "tsx": "^4.19.4",
@@ -83,6 +85,8 @@
     "@esbuild/win32-ia32": ["@esbuild/win32-ia32@0.25.5", "https://registry.npmmirror.com/@esbuild/win32-ia32/-/win32-ia32-0.25.5.tgz", { "os": "win32", "cpu": "ia32" }, "sha512-onOJ02pqs9h1iMJ1PQphR+VZv8qBMQ77Klcsqv9CNW2w6yLqoURLcgERAIurY6QE63bbLuqgP9ATqajFLK5AMQ=="],
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.25.5", "https://registry.npmmirror.com/@esbuild/win32-x64/-/win32-x64-0.25.5.tgz", { "os": "win32", "cpu": "x64" }, "sha512-TXv6YnJ8ZMVdX+SXWVBo/0p8LTcrUYngpWjvm91TMjjBQii7Oz11Lw5lbDV5Y0TzuhSJHwiH4hEtC1I42mMS0g=="],
+
+    "@hono/node-server": ["@hono/node-server@1.14.3", "https://registry.npmmirror.com/@hono/node-server/-/node-server-1.14.3.tgz", { "peerDependencies": { "hono": "^4" } }, "sha512-KuDMwwghtFYSmIpr4WrKs1VpelTrptvJ+6x6mbUcZnFcc213cumTF5BdqfHyW93B19TNI4Vaev14vOI2a0Ie3w=="],
 
     "@huggingface/inference": ["@huggingface/inference@2.8.1", "https://registry.npmmirror.com/@huggingface/inference/-/inference-2.8.1.tgz", { "dependencies": { "@huggingface/tasks": "^0.12.9" } }, "sha512-EfsNtY9OR6JCNaUa5bZu2mrs48iqeTz0Gutwf+fU0Kypx33xFQB4DKMhp8u4Ee6qVbLbNWvTHuWwlppLQl4p4Q=="],
 
@@ -365,6 +369,8 @@
     "has-unicode": ["has-unicode@2.0.1", "https://registry.npmmirror.com/has-unicode/-/has-unicode-2.0.1.tgz", {}, "sha512-8Rf9Y83NBReMnx0gFzA8JImQACstCYWUplepDa9xprwwtmgEZUF0h/i5xSA625zB/I37EtrswSST6OXxwaaIJQ=="],
 
     "hasown": ["hasown@2.0.2", "https://registry.npmmirror.com/hasown/-/hasown-2.0.2.tgz", { "dependencies": { "function-bind": "^1.1.2" } }, "sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ=="],
+
+    "hono": ["hono@4.7.11", "https://registry.npmmirror.com/hono/-/hono-4.7.11.tgz", {}, "sha512-rv0JMwC0KALbbmwJDEnxvQCeJh+xbS3KEWW5PC9cMJ08Ur9xgatI0HmtgYZfOdOSOeYsp5LO2cOhdI8cLEbDEQ=="],
 
     "html-to-text": ["html-to-text@9.0.5", "https://registry.npmmirror.com/html-to-text/-/html-to-text-9.0.5.tgz", { "dependencies": { "@selderee/plugin-htmlparser2": "^0.11.0", "deepmerge": "^4.3.1", "dom-serializer": "^2.0.0", "htmlparser2": "^8.0.2", "selderee": "^0.11.0" } }, "sha512-qY60FjREgVZL03vJU6IfMV4GDjGBIoOyvuFdpBDIX9yTlDw0TjxVBQp+P8NvpdIXNJvfWBTNul7fsAQJq2FNpg=="],
 
