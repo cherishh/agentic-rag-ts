@@ -1,4 +1,4 @@
 await Bun.build({
-  entrypoints: ['./src/main.ts'],
+  entrypoints: ['./src/index.ts'],
   outdir: './out',
 });

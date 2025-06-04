@@ -8,10 +8,10 @@
     "clean": "rm -rf ./out && echo 'Done.'",
     "dev:watch": "bun --watch run ./src/main.ts",
     "dev": "bun run ./src/main.ts",
-    "build": "bun build ./src/main.ts --outdir ./out --target bun",
-    "server": "bun run ./src/server.ts",
-    "server:watch": "bun --watch run ./src/server.ts",
-    "server:prod": "NODE_ENV=production bun run ./src/server.ts"
+    "build": "bun build ./src/index.ts --outdir ./out --target bun",
+    "server": "bun run ./src/index.ts",
+    "server:watch": "bun --watch run ./src/index.ts",
+    "server:prod": "NODE_ENV=production bun run ./src/index.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
