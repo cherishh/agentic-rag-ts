@@ -2,7 +2,6 @@
 
 基于LlamaIndex.TS + Qdrant Cloud(Vector DB) + OpenAI的RAG（检索增强生成）应用程序，支持多数据集、混合 AI Agent功能（rag 之外的问题可路由到不同的 tool）。
 
-**🆕 现已提供完整的 RESTful API 服务！**
 
 ## 🏗️ 代码结构
 
