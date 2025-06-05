@@ -108,7 +108,7 @@ export function setupDocs(api: Hono) {
       <div class="endpoint">
         <span class="method post">POST</span>
         <span class="path">/agent</span>
-        <div class="description">Agentic查询，支持工具调用（数学计算、RAG查询等）</div>
+        <div class="description">Agentic查询，支持工具调用（数学计算、天气查询、RAG查询等）</div>
         <div class="example">
           <strong>请求示例:</strong>
           <pre>curl -X POST http://localhost:3000/agent \\
@@ -118,6 +118,12 @@ export function setupDocs(api: Hono) {
         <div class="response">
           <strong>响应示例:</strong>
           <pre>{"success": true, "data": {"query": "...", "response": "最近一个月PPI是97.3。123乘以456等于56088。"}}</pre>
+        </div>
+        <div class="example">
+          <strong>天气查询示例:</strong>
+          <pre>curl -X POST http://localhost:3000/agent \\
+  -H "Content-Type: application/json" \\
+  -d '{"query": "北京今天天气怎么样？", "dataset": "price_index_statistics"}'</pre>
         </div>
       </div>
 
@@ -152,6 +158,23 @@ data: {"type":"end","message":"生成完成"}</pre>
           <pre>curl -X POST http://localhost:3000/cross-query \\
   -H "Content-Type: application/json" \\
   -d '{"query": "价格指数", "datasets": ["price_index_statistics", "machine_learning"]}'</pre>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <strong>🛠️ 可用工具列表</strong>
+        <ul>
+          <li><strong>数学计算</strong> - 支持加法和乘法运算（sumNumbers, multiply）</li>
+          <li><strong>天气查询</strong> - 获取指定城市的实时天气信息（getWeather），使用WeatherAPI.com数据源</li>
+          <li><strong>数据查询</strong> - 从知识库中检索相关信息回答问题</li>
+        </ul>
+        <div class="example">
+          <strong>组合查询示例:</strong>
+          <pre>"今天上海天气如何？另外最近的PPI数据是多少？再帮我计算88*99"</pre>
+        </div>
+        <div class="example">
+          <strong>注意事项:</strong>
+          <pre>天气查询需要在环境变量中配置 WEATHER_API_KEY（WeatherAPI.com）</pre>
         </div>
       </div>
 

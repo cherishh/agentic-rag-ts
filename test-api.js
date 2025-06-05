@@ -71,6 +71,23 @@ async function testAPI() {
     });
     console.log();
 
+    // 5.5. 天气工具测试
+    console.log('5️⃣.5️⃣ 测试天气查询工具...');
+    const weatherResponse = await fetch(`${API_BASE}/agent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: '北京今天天气怎么样？',
+        dataset: 'price_index_statistics',
+      }),
+    });
+    const weatherData = await weatherResponse.json();
+    console.log('✅ 天气查询成功:', {
+      query: weatherData.data?.query,
+      response: weatherData.data?.response?.substring(0, 150) + '...',
+    });
+    console.log();
+
     // 6. 检索测试
     console.log('6️⃣ 测试文档检索...');
     const retrieveResponse = await fetch(`${API_BASE}/retrieve`, {

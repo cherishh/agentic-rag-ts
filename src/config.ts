@@ -31,6 +31,15 @@ export const OPENAI_CONFIG = {
   temperature: 0,
 };
 
+// 天气API配置
+export const WEATHER_CONFIG = {
+  // 使用weatherapi.com API
+  // 注册免费账号：https://www.weatherapi.com/
+  apiKey: process.env.WEATHER_API_KEY || '',
+  baseUrl: 'http://api.weatherapi.com/v1',
+  defaultCity: '上海',
+};
+
 // 文档分块配置
 export const CHUNKING_CONFIG = {
   chunkSize: 1024,

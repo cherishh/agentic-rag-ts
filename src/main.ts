@@ -12,7 +12,8 @@ async function demonstrateFeatures() {
       '- 流式Agentic RAG输出\n' +
       '- 多数据集管理(配置方式)\n' +
       '- 数据集统计信息\n' +
-      '- index集删除\n'
+      '- index集删除\n' +
+      '- 天气查询工具 🆕\n'
   );
 
   try {
@@ -35,12 +36,12 @@ async function demonstrateFeatures() {
     console.log(`相关文档数量: ${queryResult.sourceNodes?.length || 0}`);
     console.log(`相关文档：${JSON.stringify(queryResult.sourceNodes, null, 2)}`);
 
-    // 3. Agent查询
-    console.log('\n3️⃣ Agentic 查询演示:');
+    // 3. Agent查询（包含多工具演示）
+    console.log('\n3️⃣ Agentic 查询演示（多工具组合）:');
     const agentQuery =
       CURRENT_DATASET === 'price_index_statistics'
-        ? '最近一个月PPI是多少? 另外计算123*456'
-        : '什么是机器学习中的过拟合? 另外计算10*20';
+        ? '最近一个月PPI是多少? 另外计算123*456，再告诉我北京今天的天气'
+        : '什么是机器学习中的过拟合? 另外计算10*20，再查询上海的天气情况';
 
     const agentResult = await app.agentQuery(agentQuery);
     console.log(`Agent查询: ${agentQuery}`);

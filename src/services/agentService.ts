@@ -2,11 +2,25 @@ import { agent, agentStreamEvent } from '@llamaindex/workflow';
 import { tool, QueryEngineTool } from 'llamaindex';
 import { z } from 'zod';
 import { VectorStoreService } from './vectorStore';
+import { weatherService } from './weatherService';
 import type { DatasetKey } from './vectorStore';
 
 // 工具函数 - 符合LlamaIndex工具参数结构
 export const sumNumbers = ({ a, b }: { a: number; b: number }): number => a + b;
 export const multiplyNumbers = ({ a, b }: { a: number; b: number }): number => a * b;
+
+// 天气查询工具函数
+export const getWeatherInfo = async ({ city }: { city: string }): Promise<string> => {
+  try {
+    const weather = await weatherService.getWeather(city);
+    return weatherService.formatWeatherInfo(weather);
+  } catch (error) {
+    if (error instanceof Error) {
+      return `❌ 天气查询失败：${error.message}`;
+    }
+    return `❌ 天气查询失败：未知错误`;
+  }
+};
 
 export class AgentService {
   constructor(private vectorStoreService: VectorStoreService) {}
@@ -38,6 +52,17 @@ export class AgentService {
       execute: multiplyNumbers,
     });
 
+    // 天气查询工具
+    const weatherTool = tool({
+      name: 'getWeather',
+      description:
+        'Get current weather information for a specific city. Use this when users ask about weather conditions.',
+      parameters: z.object({
+        city: z.string({ description: 'The name of the city to get weather for (in English)' }),
+      }),
+      execute: getWeatherInfo,
+    });
+
     // 查询工具
     const queryTool = index.queryTool({
       metadata: {
@@ -47,7 +72,7 @@ export class AgentService {
       options: { similarityTopK: 10 },
     });
 
-    return [addTool, multiplyTool, queryTool];
+    return [addTool, multiplyTool, weatherTool, queryTool];
   }
 
   /**
