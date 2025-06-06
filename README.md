@@ -2,11 +2,6 @@
 
 基于LlamaIndex.TS + Qdrant Cloud(Vector DB) + OpenAI的RAG（检索增强生成）应用程序，支持多数据集、混合 AI Agent功能（rag 之外的问题可路由到不同的 tool）。
 
-## 🎥 体验 Demo
-
-[Agentic RAG Demo](https://agentic-rag-fe-chi.vercel.app/)
-P.S. This code is also available on my [github](https://github.com/cherishh/agentic-rag-fe)
-
 ## 🏗️ 代码结构
 
 ```
