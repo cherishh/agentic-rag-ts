@@ -11,7 +11,8 @@
     "build": "bun build ./src/index.ts --outdir ./out --target bun",
     "server": "bun run ./src/index.ts",
     "server:watch": "bun --watch run ./src/index.ts",
-    "server:prod": "NODE_ENV=production bun run ./src/index.ts"
+    "server:prod": "NODE_ENV=production bun run ./src/index.ts",
+    "test:vectorstore": "bun run ./src/tests/vectorStore.test.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

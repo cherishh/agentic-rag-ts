@@ -37,35 +37,104 @@ export class VectorStoreService {
 
     try {
       // 尝试加载现有索引
+      console.log(`🔄 尝试从 VectorStore 加载现有索引: ${config.description}`);
       const index = await VectorStoreIndex.fromVectorStore(vectorStore);
+      console.log(`✅ VectorStoreIndex.fromVectorStore 成功`);
 
       // 验证索引可用性
+      console.log(`🔍 验证索引可用性...`);
       const testEngine = index.asQueryEngine();
-      await testEngine.query({ query: 'test' });
+      const testResult = await testEngine.query({ query: 'test' });
+      console.log(`✅ 索引查询测试成功，响应长度: ${testResult.toString().length}`);
 
       console.log(`✅ 成功加载现有索引: ${config.description}`);
       this.indices.set(dataset, index);
       return index;
     } catch (error) {
-      console.log(`⚠️  创建新索引: ${config.description}`);
-      const index = await this.createNewIndex(dataset);
-      this.indices.set(dataset, index);
-      return index;
+      console.log(`⚠️  现有索引不可用，检查是否需要创建新索引: ${config.description}`);
+      console.log(`错误详情: ${error instanceof Error ? error.message : error}`);
+
+      // 检查collection是否存在
+      const collectionExists = await this.checkCollectionExists(config.collectionName);
+
+      if (collectionExists) {
+        console.log(`ℹ️  Collection ${config.collectionName} 已存在，但索引加载失败，可能是配置问题`);
+        // 如果collection存在但加载失败，可能是嵌入模型变化等问题，此时才重建
+        console.log(`🔄 重建索引: ${config.description}`);
+        const index = await this.createNewIndex(dataset, true);
+        this.indices.set(dataset, index);
+        return index;
+      } else {
+        console.log(`📚 Collection 不存在，创建新索引: ${config.description}`);
+        const index = await this.createNewIndex(dataset, false);
+        this.indices.set(dataset, index);
+        return index;
+      }
+    }
+  }
+
+  /**
+   * 检查collection是否存在
+   */
+  async checkCollectionExists(collectionName: string): Promise<boolean> {
+    try {
+      const vectorStore = new QdrantVectorStore({
+        url: QDRANT_CONFIG.url,
+        apiKey: QDRANT_CONFIG.apiKey,
+        collectionName,
+      });
+
+      const client = (vectorStore as any).client();
+
+      // 方法1: 尝试获取collection信息
+      try {
+        const collectionInfo = await client.getCollectionInfo(collectionName);
+        console.log(`🔍 Collection ${collectionName} 信息:`, JSON.stringify(collectionInfo, null, 2));
+        return true;
+      } catch (infoError: any) {
+        console.log(`ℹ️  getCollectionInfo 失败: ${infoError.message}`);
+
+        // 方法2: 列出所有collections进行检查
+        try {
+          const collections = await client.getCollections();
+          console.log(`📋 所有 Collections:`, collections);
+
+          // 检查 collections 的结构
+          if (collections && collections.collections) {
+            const exists = collections.collections.some(
+              (col: any) => col.name === collectionName || col === collectionName
+            );
+            console.log(`🔍 通过列表检查 Collection ${collectionName} 存在状态: ${exists}`);
+            return exists;
+          }
+
+          return false;
+        } catch (listError: any) {
+          console.log(`ℹ️  getCollections 也失败: ${listError.message}`);
+          return false;
+        }
+      }
+    } catch (error: any) {
+      console.error(`❌ checkCollectionExists 彻底失败:`, error.message);
+      return false;
     }
   }
 
   /**
    * 创建新索引
    */
-  async createNewIndex(dataset: DatasetKey): Promise<VectorStoreIndex> {
+  async createNewIndex(dataset: DatasetKey, forceRecreate: boolean = false): Promise<VectorStoreIndex> {
     try {
       const config = DATASET_CONFIGS[dataset];
       const vectorStore = this.vectorStores.get(dataset) || this.createVectorStore(dataset);
 
       console.log(`📚 加载数据集: ${config.description}...`);
 
-      // 删除现有collection（避免向量维度冲突）
-      await this.deleteCollection(config.collectionName);
+      // 只有在强制重建时才删除现有collection
+      if (forceRecreate) {
+        console.log('🗑️  强制重建，删除现有collection...');
+        await this.deleteCollection(config.collectionName);
+      }
 
       // 加载文档
       const reader = new SimpleDirectoryReader();
@@ -163,6 +232,23 @@ export class VectorStoreService {
         error: error.message,
       };
     }
+  }
+
+  /**
+   * 强制重建索引（用于管理功能）
+   */
+  async rebuildIndex(dataset: DatasetKey): Promise<VectorStoreIndex> {
+    const config = DATASET_CONFIGS[dataset];
+    console.log(`🔄 强制重建索引: ${config.description}`);
+
+    // 清除内存缓存
+    this.indices.delete(dataset);
+    this.vectorStores.delete(dataset);
+
+    // 强制重建
+    const index = await this.createNewIndex(dataset, true);
+    this.indices.set(dataset, index);
+    return index;
   }
 
   /**
