@@ -24,11 +24,17 @@ export const QDRANT_CONFIG = {
 };
 
 // OpenAI配置
+// export const OPENAI_CONFIG = {
+//   apiKey: process.env.OPENAI_API_KEY!,
+//   model: 'openai/gpt-4o',
+//   temperature: 0,
+//   baseUrl: 'https://openrouter.ai/api/v1',
+// };
 export const OPENAI_CONFIG = {
   apiKey: process.env.OPENAI_API_KEY!,
-  model: 'openai/gpt-4o',
+  model: 'gpt-4o',
   temperature: 0,
-  baseUrl: 'https://openrouter.ai/api/v1',
+  baseUrl: 'https://api.openai.com/v1',
 };
 
 // 嵌入模型配置（使用直接的OpenAI API）
