@@ -58,33 +58,38 @@ export class VectorStoreService {
    * 创建新索引
    */
   async createNewIndex(dataset: DatasetKey): Promise<VectorStoreIndex> {
-    const config = DATASET_CONFIGS[dataset];
-    const vectorStore = this.vectorStores.get(dataset) || this.createVectorStore(dataset);
+    try {
+      const config = DATASET_CONFIGS[dataset];
+      const vectorStore = this.vectorStores.get(dataset) || this.createVectorStore(dataset);
 
-    console.log(`📚 加载数据集: ${config.description}...`);
+      console.log(`📚 加载数据集: ${config.description}...`);
 
-    // 删除现有collection（避免向量维度冲突）
-    await this.deleteCollection(config.collectionName);
+      // 删除现有collection（避免向量维度冲突）
+      await this.deleteCollection(config.collectionName);
 
-    // 加载文档
-    const reader = new SimpleDirectoryReader();
-    const documents = await reader.loadData({
-      directoryPath: config.dataPath,
-    });
-    console.log(`✅ 成功加载 ${documents.length} 个文档`);
+      // 加载文档
+      const reader = new SimpleDirectoryReader();
+      const documents = await reader.loadData({
+        directoryPath: config.dataPath,
+      });
+      console.log(`✅ 成功加载 ${documents.length} 个文档`);
 
-    // 创建存储上下文
-    const storageContext = await storageContextFromDefaults({
-      vectorStore,
-    });
+      // 创建存储上下文
+      const storageContext = await storageContextFromDefaults({
+        vectorStore,
+      });
 
-    console.log('🔄 创建向量索引中...');
-    const index = await VectorStoreIndex.fromDocuments(documents, {
-      storageContext,
-    });
+      console.log('🔄 创建向量索引中...');
+      const index = await VectorStoreIndex.fromDocuments(documents, {
+        storageContext,
+      });
 
-    console.log(`✅ 索引创建完成: ${config.description}`);
-    return index;
+      console.log(`✅ 索引创建完成: ${config.description}`);
+      return index;
+    } catch (error) {
+      console.error('❌ 索引创建失败:', error);
+      throw error;
+    }
   }
 
   /**

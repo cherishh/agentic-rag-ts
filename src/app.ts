@@ -3,17 +3,20 @@ import { OpenAI, OpenAIEmbedding } from '@llamaindex/openai';
 import { VectorStoreService } from './services/vectorStore';
 import { QueryService } from './services/queryService';
 import { AgentService } from './services/agentService';
-import { CURRENT_DATASET, DATASET_CONFIGS, OPENAI_CONFIG, CHUNKING_CONFIG } from './config';
+import { CURRENT_DATASET, DATASET_CONFIGS, OPENAI_CONFIG, EMBEDDING_CONFIG, CHUNKING_CONFIG } from './config';
 
 // 初始化LlamaIndex设置
 Settings.llm = new OpenAI({
   model: OPENAI_CONFIG.model,
   apiKey: OPENAI_CONFIG.apiKey,
   temperature: OPENAI_CONFIG.temperature,
+  baseURL: OPENAI_CONFIG.baseUrl,
 });
 
 Settings.embedModel = new OpenAIEmbedding({
-  model: OPENAI_CONFIG.embedModel,
+  model: EMBEDDING_CONFIG.model,
+  apiKey: EMBEDDING_CONFIG.apiKey,
+  baseURL: EMBEDDING_CONFIG.baseUrl,
 });
 
 Settings.nodeParser = new SentenceSplitter({

@@ -26,9 +26,16 @@ export const QDRANT_CONFIG = {
 // OpenAI配置
 export const OPENAI_CONFIG = {
   apiKey: process.env.OPENAI_API_KEY!,
-  model: 'gpt-4o',
-  embedModel: 'text-embedding-3-small',
+  model: 'openai/gpt-4o',
   temperature: 0,
+  baseUrl: 'https://openrouter.ai/api/v1',
+};
+
+// 嵌入模型配置（使用直接的OpenAI API）
+export const EMBEDDING_CONFIG = {
+  apiKey: process.env.OPENAI_EMBED_API_KEY,
+  model: 'text-embedding-3-small',
+  baseUrl: 'https://api.openai.com/v1',
 };
 
 // 天气API配置
