@@ -160,3 +160,9 @@ export const OPENAI_CONFIG = {
 - **OpenAI** - LLM和嵌入模型
 - **TypeScript** - 类型安全
 - **Bun** - 运行时和包管理器 
+
+
+## 坑
+不要使用openrouter。openrouter：
+- 不支持 embedding model，即无法创建 vector store
+- 不支持 tool calling，即使使用 gpt-4o

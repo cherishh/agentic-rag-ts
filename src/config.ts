@@ -48,7 +48,7 @@ export const EMBEDDING_CONFIG = {
 export const WEATHER_CONFIG = {
   // 使用weatherapi.com API
   // 注册免费账号：https://www.weatherapi.com/
-  apiKey: process.env.WEATHER_API_KEY || '',
+  apiKey: process.env.WEATHER_API_KEY!,
   baseUrl: 'http://api.weatherapi.com/v1',
   defaultCity: '上海',
 };
