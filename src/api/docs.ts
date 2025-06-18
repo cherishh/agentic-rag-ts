@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import type { Hono } from 'hono';
 
 // API文档路由
 export function setupDocs(api: Hono) {

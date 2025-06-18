@@ -34,7 +34,7 @@ export class QueryService {
       includeSourceNodes?: boolean;
     }
   ): Promise<QueryResult> {
-    const index = await this.vectorStoreService.getOrCreateIndex(dataset);
+    const index = await this.vectorStoreService.getIndex(dataset);
     const queryEngine = index.asQueryEngine({
       retriever: index.asRetriever({
         similarityTopK: options?.similarityTopK || RETRIEVAL_CONFIG.similarityTopK,
@@ -68,7 +68,7 @@ export class QueryService {
       similarityTopK?: number;
     }
   ): Promise<RetrievalResult> {
-    const index = await this.vectorStoreService.getOrCreateIndex(dataset);
+    const index = await this.vectorStoreService.getIndex(dataset);
     const retriever = index.asRetriever({
       similarityTopK: options?.similarityTopK || RETRIEVAL_CONFIG.similarityTopK,
     });

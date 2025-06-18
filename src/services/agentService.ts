@@ -29,7 +29,7 @@ export class AgentService {
    * 创建工具集
    */
   private async createTools(dataset: DatasetKey) {
-    const index = await this.vectorStoreService.getOrCreateIndex(dataset);
+    const index = await this.vectorStoreService.getIndex(dataset);
 
     // 数学工具
     const addTool = tool({

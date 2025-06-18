@@ -6,11 +6,8 @@ import { DATASET_CONFIGS, QDRANT_CONFIG } from '../config';
 export type DatasetKey = keyof typeof DATASET_CONFIGS;
 
 export class VectorStoreService {
-  private vectorStores: Map<string, QdrantVectorStore> = new Map();
-  private indices: Map<string, VectorStoreIndex> = new Map();
-
   /**
-   * 创建向量存储实例
+   * 创建向量存储实例 - 轻量级连接，无需缓存
    */
   private createVectorStore(dataset: DatasetKey): QdrantVectorStore {
     const config = DATASET_CONFIGS[dataset];
@@ -22,55 +19,62 @@ export class VectorStoreService {
   }
 
   /**
-   * 获取或创建索引
+   * 直接获取索引 - 利用云端持久化，无需本地缓存
    */
-  async getOrCreateIndex(dataset: DatasetKey): Promise<VectorStoreIndex> {
-    if (this.indices.has(dataset)) {
-      return this.indices.get(dataset)!;
+  async getIndex(dataset: DatasetKey): Promise<VectorStoreIndex> {
+    const config = DATASET_CONFIGS[dataset];
+
+    console.log(`🔄 连接到云端索引: ${config.description}`);
+
+    // 首先尝试连接，带重试机制
+    const index = await this.connectToIndexWithRetry(dataset);
+    if (index) {
+      console.log(`✅ 成功连接到云端索引: ${config.description}`);
+      return index;
     }
 
+    // 重试后仍然失败，检查是否需要创建
+    console.log(`⚠️  重试后仍无法连接，检查是否需要创建: ${config.description}`);
+
+    const collectionExists = await this.checkCollectionExists(config.collectionName);
+
+    if (!collectionExists) {
+      console.log(`📚 Collection 不存在，创建新索引: ${config.description}`);
+      return await this.createNewIndex(dataset);
+    } else {
+      console.log(`🔄 Collection 存在但重试后仍连接失败，重建索引: ${config.description}`);
+      return await this.createNewIndex(dataset, true);
+    }
+  }
+
+  /**
+   * 带重试机制的连接尝试
+   */
+  private async connectToIndexWithRetry(dataset: DatasetKey, maxRetries: number = 3): Promise<VectorStoreIndex | null> {
     const config = DATASET_CONFIGS[dataset];
-    const vectorStore = this.createVectorStore(dataset);
-    this.vectorStores.set(dataset, vectorStore);
 
-    console.log(`🔄 初始化数据集: ${config.description}`);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 尝试连接到索引 (第 ${attempt}/${maxRetries} 次): ${config.description}`);
 
-    try {
-      // 尝试加载现有索引
-      console.log(`🔄 尝试从 VectorStore 加载现有索引: ${config.description}`);
-      const index = await VectorStoreIndex.fromVectorStore(vectorStore);
-      console.log(`✅ VectorStoreIndex.fromVectorStore 成功`);
+        const vectorStore = this.createVectorStore(dataset);
+        const index = await VectorStoreIndex.fromVectorStore(vectorStore);
 
-      // 验证索引可用性
-      console.log(`🔍 验证索引可用性...`);
-      const testEngine = index.asQueryEngine();
-      const testResult = await testEngine.query({ query: 'test' });
-      console.log(`✅ 索引查询测试成功，响应长度: ${testResult.toString().length}`);
-
-      console.log(`✅ 成功加载现有索引: ${config.description}`);
-      this.indices.set(dataset, index);
-      return index;
-    } catch (error) {
-      console.log(`⚠️  现有索引不可用，检查是否需要创建新索引: ${config.description}`);
-      console.log(`错误详情: ${error instanceof Error ? error.message : error}`);
-
-      // 检查collection是否存在
-      const collectionExists = await this.checkCollectionExists(config.collectionName);
-
-      if (collectionExists) {
-        console.log(`ℹ️  Collection ${config.collectionName} 已存在，但索引加载失败，可能是配置问题`);
-        // 如果collection存在但加载失败，可能是嵌入模型变化等问题，此时才重建
-        console.log(`🔄 重建索引: ${config.description}`);
-        const index = await this.createNewIndex(dataset, true);
-        this.indices.set(dataset, index);
+        console.log(`✅ 第 ${attempt} 次连接成功: ${config.description}`);
         return index;
-      } else {
-        console.log(`📚 Collection 不存在，创建新索引: ${config.description}`);
-        const index = await this.createNewIndex(dataset, false);
-        this.indices.set(dataset, index);
-        return index;
+      } catch (error) {
+        console.log(`❌ 第 ${attempt} 次连接失败: ${error instanceof Error ? error.message : error}`);
+
+        if (attempt < maxRetries) {
+          const waitTime = 1000 * attempt; // 递增等待时间: 1s, 2s, 3s
+          console.log(`⏳ 等待 ${waitTime}ms 后重试...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
       }
     }
+
+    console.log(`❌ 经过 ${maxRetries} 次重试后仍无法连接`);
+    return null;
   }
 
   /**
@@ -126,7 +130,7 @@ export class VectorStoreService {
   async createNewIndex(dataset: DatasetKey, forceRecreate: boolean = false): Promise<VectorStoreIndex> {
     try {
       const config = DATASET_CONFIGS[dataset];
-      const vectorStore = this.vectorStores.get(dataset) || this.createVectorStore(dataset);
+      const vectorStore = this.createVectorStore(dataset);
 
       console.log(`📚 加载数据集: ${config.description}...`);
 
@@ -182,7 +186,7 @@ export class VectorStoreService {
   }
 
   /**
-   * 检查索引健康状态
+   * 检查索引健康状态 - 轻量级检查，不执行查询
    */
   async checkHealth(dataset: DatasetKey): Promise<{
     vectorStoreConnected: boolean;
@@ -191,9 +195,8 @@ export class VectorStoreService {
     error?: string;
   }> {
     try {
-      const index = await this.getOrCreateIndex(dataset);
-      const testQuery = index.asQueryEngine();
-      await testQuery.query({ query: 'test' });
+      // 只检查连接，不执行实际查询
+      await this.getIndex(dataset);
 
       return {
         vectorStoreConnected: true,
@@ -211,11 +214,48 @@ export class VectorStoreService {
   }
 
   /**
+   * 深度健康检查 - 包含实际查询测试（用于诊断）
+   */
+  async checkHealthDeep(dataset: DatasetKey): Promise<{
+    vectorStoreConnected: boolean;
+    qdrantCloudConnected: boolean;
+    queryTestPassed: boolean;
+    status: string;
+    error?: string;
+  }> {
+    try {
+      console.log('🏥 执行深度健康检查...');
+      const index = await this.getIndex(dataset);
+
+      console.log('🧪 执行测试查询...');
+      const testQuery = index.asQueryEngine();
+      await testQuery.query({ query: 'test' });
+      console.log('✅ 测试查询成功');
+
+      return {
+        vectorStoreConnected: true,
+        qdrantCloudConnected: true,
+        queryTestPassed: true,
+        status: 'healthy',
+      };
+    } catch (error: any) {
+      console.log('❌ 深度健康检查失败:', error.message);
+      return {
+        vectorStoreConnected: false,
+        qdrantCloudConnected: false,
+        queryTestPassed: false,
+        status: 'unhealthy',
+        error: error.message,
+      };
+    }
+  }
+
+  /**
    * 获取数据集统计信息
    */
   async getDatasetStats(dataset: DatasetKey) {
     try {
-      await this.getOrCreateIndex(dataset);
+      await this.getIndex(dataset);
       const config = DATASET_CONFIGS[dataset];
 
       return {
@@ -242,13 +282,11 @@ export class VectorStoreService {
     console.log(`🔄 强制重建索引: ${config.description}`);
 
     // 清除内存缓存
-    this.indices.delete(dataset);
-    this.vectorStores.delete(dataset);
+    const index = await this.getIndex(dataset);
 
     // 强制重建
-    const index = await this.createNewIndex(dataset, true);
-    this.indices.set(dataset, index);
-    return index;
+    const newIndex = await this.createNewIndex(dataset, true);
+    return newIndex;
   }
 
   /**
@@ -262,7 +300,7 @@ export class VectorStoreService {
 
     for (const dataset of datasets) {
       try {
-        const index = await this.getOrCreateIndex(dataset);
+        const index = await this.getIndex(dataset);
         const queryEngine = index.asQueryEngine({
           retriever: index.asRetriever({ similarityTopK: 3 }),
         });

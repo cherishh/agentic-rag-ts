@@ -50,8 +50,8 @@ async function testCheckCollectionExists() {
   }
 }
 
-async function testGetOrCreateIndex() {
-  console.log('\n🧪 测试 getOrCreateIndex 方法...');
+async function testGetIndex() {
+  console.log('\n🧪 测试 getIndex 方法...');
 
   const dataset = CURRENT_DATASET; // 使用默认数据集
   const config = DATASET_CONFIGS[dataset];
@@ -61,9 +61,9 @@ async function testGetOrCreateIndex() {
   console.log(`数据路径: ${config.dataPath}`);
 
   try {
-    console.log('\n🔄 开始调用 getOrCreateIndex...');
-    const index = await vectorStoreService.getOrCreateIndex(dataset);
-    console.log('✅ getOrCreateIndex 成功完成');
+    console.log('\n🔄 开始调用 getIndex...');
+    const index = await vectorStoreService.getIndex(dataset);
+    console.log('✅ getIndex 成功完成');
 
     // 测试索引是否可用
     console.log('\n🔍 测试索引查询功能...');
@@ -72,7 +72,7 @@ async function testGetOrCreateIndex() {
     console.log('✅ 索引查询测试成功');
     console.log(`响应: ${response.toString().substring(0, 100)}...`);
   } catch (error) {
-    console.error('❌ getOrCreateIndex 失败:', error);
+    console.error('❌ getIndex 失败:', error);
 
     if (error instanceof Error) {
       console.error('错误消息:', error.message);
@@ -123,7 +123,7 @@ async function runAllTests() {
   try {
     await testQdrantConnection();
     await testCheckCollectionExists();
-    await testGetOrCreateIndex();
+    await testGetIndex();
   } catch (error) {
     console.error('❌ 测试过程中发生错误:', error);
   }
@@ -137,4 +137,4 @@ if (require.main === module) {
   runAllTests().catch(console.error);
 }
 
-export { testCheckCollectionExists, testGetOrCreateIndex, testQdrantConnection, runAllTests };
+export { testCheckCollectionExists, testGetIndex, testQdrantConnection, runAllTests };

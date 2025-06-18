@@ -63,6 +63,26 @@ api.get('/status', async c => {
   }
 });
 
+api.get('/diagnose', async c => {
+  try {
+    const result = await app.diagnose();
+    return c.json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    return c.json(
+      {
+        success: false,
+        error: '诊断失败',
+        message: error.message,
+        timestamp: new Date().toISOString(),
+      },
+      500
+    );
+  }
+});
+
 // 获取数据集列表
 api.get('/datasets', c => {
   const datasets = Object.entries(DATASET_CONFIGS).map(([key, config]) => ({

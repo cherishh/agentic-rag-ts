@@ -47,24 +47,61 @@ export class RAGApplication {
     console.log(`🎯 当前数据集: ${DATASET_CONFIGS[CURRENT_DATASET].description}`);
 
     // 预热索引
-    await this.vectorStoreService.getOrCreateIndex(CURRENT_DATASET);
+    await this.vectorStoreService.getIndex(CURRENT_DATASET);
     console.log('✅ 应用程序初始化完成');
   }
 
   /**
-   * 获取应用程序状态
+   * 获取应用程序状态 - 优化版本，避免重复连接
    */
   async getStatus() {
-    const health = await this.vectorStoreService.checkHealth(CURRENT_DATASET);
-    const stats = await this.vectorStoreService.getDatasetStats(CURRENT_DATASET);
+    try {
+      // 只连接一次索引，用于两个检查
+      await this.vectorStoreService.getIndex(CURRENT_DATASET);
 
-    return {
-      status: 'running',
-      currentDataset: CURRENT_DATASET,
-      health,
-      stats,
-      availableDatasets: Object.keys(DATASET_CONFIGS),
-    };
+      const health = {
+        vectorStoreConnected: true,
+        qdrantCloudConnected: true,
+        status: 'healthy',
+      };
+
+      const stats = {
+        dataset: DATASET_CONFIGS[CURRENT_DATASET].description,
+        collectionName: DATASET_CONFIGS[CURRENT_DATASET].collectionName,
+        dataPath: DATASET_CONFIGS[CURRENT_DATASET].dataPath,
+        status: 'active',
+      };
+
+      return {
+        status: 'running',
+        currentDataset: CURRENT_DATASET,
+        health,
+        stats,
+        availableDatasets: Object.keys(DATASET_CONFIGS),
+      };
+    } catch (error: any) {
+      const health = {
+        vectorStoreConnected: false,
+        qdrantCloudConnected: false,
+        status: 'unhealthy',
+        error: error.message,
+      };
+
+      const stats = {
+        dataset: DATASET_CONFIGS[CURRENT_DATASET].description,
+        collectionName: DATASET_CONFIGS[CURRENT_DATASET].collectionName,
+        status: 'error',
+        error: error.message,
+      };
+
+      return {
+        status: 'error',
+        currentDataset: CURRENT_DATASET,
+        health,
+        stats,
+        availableDatasets: Object.keys(DATASET_CONFIGS),
+      };
+    }
   }
 
   /**
@@ -119,6 +156,13 @@ export class RAGApplication {
       query,
       datasets || ['price_index_statistics', 'machine_learning']
     );
+  }
+
+  /**
+   * 深度诊断 - 包含实际查询测试（较慢，用于故障排查）
+   */
+  async diagnose(dataset = CURRENT_DATASET) {
+    return await this.vectorStoreService.checkHealthDeep(dataset);
   }
 
   /**
