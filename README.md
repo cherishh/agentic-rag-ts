@@ -2,6 +2,8 @@
 
 基于LlamaIndex.TS + Qdrant Cloud(Vector DB) + OpenAI的RAG（检索增强生成）应用程序，支持多数据集、混合 AI Agent功能（rag 之外的问题可路由到不同的 tool）。
 
+该项目演示用数据集有 2 个，其中一个是机器学习课程内容，大约 39w 字；另一个是国家统计局各类价格指数数据(近 13 个月)，共 5 个 table。
+
 ## 🏗️ 代码结构
 
 ```
