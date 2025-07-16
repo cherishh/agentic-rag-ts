@@ -82,17 +82,11 @@ import { app } from './src/app';
 // 初始化
 await app.initialize();
 
-// 基础查询
-const result = await app.query('{查询内容}', 'price_index_statistics', {
-  similarityTopK: 5,
-  includeSourceNodes: true
-});
+// 智能查询
+const result = await app.intelligentQuery('{查询内容}');
 
-// Agent查询
-const agentResult = await app.agentQuery('{查询内容}并计算{123*456}');
-
-// 流式Agent查询
-for await (const chunk of app.agentQueryStream('{查询内容}')) {
+// 流式智能查询
+for await (const chunk of app.intelligentQueryStream('{查询内容}并计算{123*456}')) {
   process.stdout.write(chunk);
 }
 

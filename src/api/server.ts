@@ -102,11 +102,11 @@ api.get('/datasets', c => {
   });
 });
 
-// 基础查询 - 使用智能路由
-api.post('/query', async c => {
+// 智能查询 - 专门的智能路由接口
+api.post('/intelligent-query', async c => {
   try {
     const body = await c.req.json();
-    const { query, dataset, options = {} } = body;
+    const { query } = body;
 
     if (!query) {
       return c.json(
@@ -120,112 +120,35 @@ api.post('/query', async c => {
       );
     }
 
-    const result = await app.query(query, dataset as DatasetKey, {
-      similarityTopK: options.similarityTopK || 5,
-      includeSourceNodes: options.includeSourceNodes !== false,
-    });
-
-    return c.json({
-      success: true,
-      data: result,
-      meta: {
-        query,
-        options,
-        // 新增智能路由信息
-        intelligentRouting: !dataset,
-        requestedDataset: dataset,
-      },
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error: any) {
-    return c.json(
-      {
-        success: false,
-        error: '查询失败',
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      },
-      500
-    );
-  }
-});
-
-// 文档检索（不生成回答）- 使用智能路由
-api.post('/retrieve', async c => {
-  try {
-    const body = await c.req.json();
-    const { query, dataset, options = {} } = body;
-
-    if (!query) {
-      return c.json(
-        {
-          success: false,
-          error: '缺少必需参数',
-          message: 'query 参数是必需的',
-          timestamp: new Date().toISOString(),
-        },
-        400
-      );
-    }
-
-    const result = await app.retrieve(query, dataset as DatasetKey, options);
-
-    return c.json({
-      success: true,
-      data: result,
-      meta: {
-        query,
-        options,
-        // 新增智能路由信息
-        intelligentRouting: !dataset,
-        requestedDataset: dataset,
-      },
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error: any) {
-    return c.json(
-      {
-        success: false,
-        error: '检索失败',
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      },
-      500
-    );
-  }
-});
-
-// Agent查询 - 使用智能路由
-api.post('/agent', async c => {
-  try {
-    const body = await c.req.json();
-    const { query, dataset } = body;
-
-    if (!query) {
-      return c.json(
-        {
-          success: false,
-          error: '缺少必需参数',
-          message: 'query 参数是必需的',
-          timestamp: new Date().toISOString(),
-        },
-        400
-      );
-    }
-
-    const result = await app.agentQuery(query, dataset as DatasetKey);
+    const result = await app.intelligentQuery(query);
 
     return c.json({
       success: true,
       data: {
-        query,
-        response: result,
+        query: result.query,
+        response: result.response,
+        analysis: result.analysis,
+        selectedDataset: result.selectedDataset,
+        routingReason: result.routingReason,
+        // 新增详细信息
+        decomposition: result.decomposition,
+        subResults: result.subResults,
+        executionSummary: result.executionSummary,
       },
       meta: {
-        type: 'agent',
-        // 新增智能路由信息
-        intelligentRouting: !dataset,
-        requestedDataset: dataset,
+        type: 'intelligent',
+        routing: {
+          queryType: result.analysis.queryType,
+          confidence: result.analysis.confidence,
+          reasoning: result.analysis.reasoning,
+        },
+        // 新增执行统计
+        performance: {
+          totalSubQueries: result.executionSummary.totalSubQueries,
+          successfulQueries: result.executionSummary.successfulQueries,
+          failedQueries: result.executionSummary.failedQueries,
+          totalExecutionTime: result.executionSummary.totalExecutionTime,
+        },
       },
       timestamp: new Date().toISOString(),
     });
@@ -233,7 +156,7 @@ api.post('/agent', async c => {
     return c.json(
       {
         success: false,
-        error: 'Agent查询失败',
+        error: '智能查询失败',
         message: error.message,
         timestamp: new Date().toISOString(),
       },
@@ -242,11 +165,11 @@ api.post('/agent', async c => {
   }
 });
 
-// 流式Agent查询 - 使用智能路由
-api.post('/agent/stream', async c => {
+// 流式智能查询
+api.post('/intelligent-query/stream', async c => {
   try {
     const body = await c.req.json();
-    const { query, dataset } = body;
+    const { query } = body;
 
     if (!query) {
       return c.json(
@@ -264,19 +187,15 @@ api.post('/agent/stream', async c => {
       async start(controller) {
         try {
           // 发送开始消息
-          const startMessage = `data: ${JSON.stringify({ 
-            type: 'start', 
+          const startMessage = `data: ${JSON.stringify({
+            type: 'start',
             message: '开始生成回答...',
-            meta: {
-              intelligentRouting: !dataset,
-              requestedDataset: dataset,
-            }
           })}\n\n`;
           controller.enqueue(new TextEncoder().encode(startMessage));
 
-          // 获取 Agent 流并处理
-          const agentStream = app.agentQueryStream(query, dataset as DatasetKey);
-          for await (const chunk of agentStream) {
+          // 获取智能查询流并处理
+          const intelligentStream = app.intelligentQueryStream(query);
+          for await (const chunk of intelligentStream) {
             const chunkMessage = `data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`;
             controller.enqueue(new TextEncoder().encode(chunkMessage));
           }
@@ -307,59 +226,7 @@ api.post('/agent/stream', async c => {
     return c.json(
       {
         success: false,
-        error: '流式查询失败',
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      },
-      500
-    );
-  }
-});
-
-// 智能查询 - 专门的智能路由接口
-api.post('/intelligent-query', async c => {
-  try {
-    const body = await c.req.json();
-    const { query } = body;
-
-    if (!query) {
-      return c.json(
-        {
-          success: false,
-          error: '缺少必需参数',
-          message: 'query 参数是必需的',
-          timestamp: new Date().toISOString(),
-        },
-        400
-      );
-    }
-
-    const result = await app.intelligentQuery(query);
-
-    return c.json({
-      success: true,
-      data: {
-        query: result.query,
-        response: result.response,
-        analysis: result.analysis,
-        selectedDataset: result.selectedDataset,
-        routingReason: result.routingReason,
-      },
-      meta: {
-        type: 'intelligent',
-        routing: {
-          queryType: result.analysis.queryType,
-          confidence: result.analysis.confidence,
-          reasoning: result.analysis.reasoning,
-        },
-      },
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error: any) {
-    return c.json(
-      {
-        success: false,
-        error: '智能查询失败',
+        error: '流式智能查询失败',
         message: error.message,
         timestamp: new Date().toISOString(),
       },

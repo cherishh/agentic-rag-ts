@@ -19,13 +19,15 @@ export class LLMClassifier {
     {
       key: 'machine_learning',
       name: '机器学习课程内容',
-      description: '包含机器学习相关的课程内容，涵盖算法、模型训练、数据处理、特征工程、模型评估等内容。适用于回答关于机器学习算法、模型训练、数据集划分、评估指标、超参数调优等问题。'
+      description:
+        '包含机器学习相关的课程内容，涵盖算法、模型训练、数据处理、特征工程、模型评估等内容。适用于回答关于机器学习算法、模型训练、数据集划分、评估指标、超参数调优等问题。',
     },
     {
       key: 'price_index_statistics',
       name: '价格指数统计',
-      description: '包含价格指数相关的统计数据，涵盖CPI、PPI等经济指标的历史数据和分析。适用于回答关于价格变动、通胀率、经济指标、价格趋势等问题。'
-    }
+      description:
+        '包含价格指数相关的统计数据，涵盖CPI、PPI等经济指标的历史数据和分析。适用于回答关于价格变动、通胀率、经济指标、价格趋势等问题。',
+    },
   ];
 
   /**
@@ -33,11 +35,10 @@ export class LLMClassifier {
    */
   async classify(query: string): Promise<LLMClassificationResult> {
     const prompt = this.buildClassificationPrompt(query);
-    
+
     try {
       const response = await Settings.llm.complete({
         prompt,
-        temperature: 0.1, // 低温度确保一致性
       });
 
       const result = this.parseClassificationResult(response.text);
@@ -91,7 +92,7 @@ ${datasetList}
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
-      
+
       // 验证必需字段
       if (!parsed.dataset || !parsed.confidence || !parsed.reasoning) {
         throw new Error('LLM响应缺少必需字段');
@@ -111,17 +112,17 @@ ${datasetList}
       return {
         dataset: parsed.dataset as DatasetKey,
         confidence: confidence,
-        reasoning: parsed.reasoning
+        reasoning: parsed.reasoning,
       };
     } catch (error) {
       console.error('解析LLM分类结果失败:', error);
       console.error('原始响应:', response);
-      
+
       // 返回默认结果
       return {
         dataset: 'price_index_statistics',
         confidence: 0.3,
-        reasoning: `LLM响应解析失败，使用默认数据集: ${error instanceof Error ? error.message : '未知错误'}`
+        reasoning: `LLM响应解析失败，使用默认数据集: ${error instanceof Error ? error.message : '未知错误'}`,
       };
     }
   }

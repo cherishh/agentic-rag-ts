@@ -69,73 +69,35 @@ export function setupDocs(api: Hono) {
         </div>
       </div>
 
-      <div class="endpoint">
-        <strong>🔍 查询功能</strong> <span class="status-badge ready">就绪</span>
+            <div class="endpoint">
+        <strong>🤖 智能查询功能</strong> <span class="status-badge ready">就绪</span>
       </div>
 
       <div class="endpoint">
         <span class="method post">POST</span>
-        <span class="path">/query</span>
-        <div class="description">基础RAG查询，返回生成的回答和相关文档</div>
+        <span class="path">/intelligent-query</span>
+        <div class="description">智能查询，支持自动路由和工具调用（数学计算、天气查询、RAG查询等）</div>
         <div class="example">
           <strong>请求示例:</strong>
-          <pre>curl -X POST http://localhost:3000/query \\
+          <pre>curl -X POST http://localhost:3000/intelligent-query \\
   -H "Content-Type: application/json" \\
-  -d '{"query": "最近一个月PPI是多少", "dataset": "price_index_statistics", "options": {"similarityTopK": 5}}'</pre>
+  -d '{"query": "最近一个月PPI是多少？另外计算123*456，再查询北京天气"}'</pre>
         </div>
         <div class="response">
           <strong>响应示例:</strong>
-          <pre>{"success": true, "data": {"query": "最近一个月PPI是多少", "response": "根据提供的数据...", "sourceNodes": [...]}}</pre>
+          <pre>{"success": true, "data": {"query": "...", "response": "最近一个月PPI是97.3。123乘以456等于56088。北京今天晴天，温度15°C。", "analysis": {...}, "selectedDataset": "价格指数统计", "routingReason": "查询包含价格指数领域关键词"}}</pre>
         </div>
       </div>
 
       <div class="endpoint">
         <span class="method post">POST</span>
-        <span class="path">/retrieve</span>
-        <div class="description">文档检索，只返回相关文档片段，不生成回答</div>
+        <span class="path">/intelligent-query/stream</span>
+        <div class="description">流式智能查询，实时返回生成内容（Server-Sent Events）</div>
         <div class="example">
           <strong>请求示例:</strong>
-          <pre>curl -X POST http://localhost:3000/retrieve \\
+          <pre>curl -X POST http://localhost:3000/intelligent-query/stream \\
   -H "Content-Type: application/json" \\
-  -d '{"query": "机器学习", "dataset": "machine_learning"}'</pre>
-        </div>
-      </div>
-
-      <div class="endpoint">
-        <strong>🤖 Agentic 功能</strong> <span class="status-badge ready">就绪</span>
-      </div>
-
-      <div class="endpoint">
-        <span class="method post">POST</span>
-        <span class="path">/agent</span>
-        <div class="description">Agentic查询，支持工具调用（数学计算、天气查询、RAG查询等）</div>
-        <div class="example">
-          <strong>请求示例:</strong>
-          <pre>curl -X POST http://localhost:3000/agent \\
-  -H "Content-Type: application/json" \\
-  -d '{"query": "最近一个月PPI是多少？另外计算123*456", "dataset": "price_index_statistics"}'</pre>
-        </div>
-        <div class="response">
-          <strong>响应示例:</strong>
-          <pre>{"success": true, "data": {"query": "...", "response": "最近一个月PPI是97.3。123乘以456等于56088。"}}</pre>
-        </div>
-        <div class="example">
-          <strong>天气查询示例:</strong>
-          <pre>curl -X POST http://localhost:3000/agent \\
-  -H "Content-Type: application/json" \\
-  -d '{"query": "北京今天天气怎么样？", "dataset": "price_index_statistics"}'</pre>
-        </div>
-      </div>
-
-      <div class="endpoint">
-        <span class="method post">POST</span>
-        <span class="path">/agent/stream</span>
-        <div class="description">流式Agentic查询，实时返回生成内容（Server-Sent Events）</div>
-        <div class="example">
-          <strong>请求示例:</strong>
-          <pre>curl -X POST http://localhost:3000/agent/stream \\
-  -H "Content-Type: application/json" \\
-  -d '{"query": "解释机器学习的基本概念", "dataset": "machine_learning"}'</pre>
+  -d '{"query": "解释机器学习的基本概念并计算10*20"}'</pre>
         </div>
         <div class="response">
           <strong>SSE响应格式:</strong>

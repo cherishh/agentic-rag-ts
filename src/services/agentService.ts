@@ -6,6 +6,7 @@ import { weatherService } from './weatherService';
 import { MasterAgent } from './masterAgent';
 import type { DatasetKey } from './vectorStore';
 import type { MasterAgentResponse } from './masterAgent';
+import type { SubQuery } from './queryDecomposer';
 
 // 工具函数 - 符合LlamaIndex工具参数结构
 export const sumNumbers = ({ a, b }: { a: number; b: number }): number => a + b;
@@ -45,7 +46,7 @@ export class AgentService {
     // 对于流式输出，我们需要特殊处理
     // 先分析查询类型，然后决定如何处理
     const analysis = await (this.masterAgent as any).analyzeQueryIntent(query);
-    
+
     if (analysis.queryType === 'direct_tool') {
       // 直接工具调用，一次性返回结果
       const result = await this.masterAgent.processQuery(query);
@@ -55,7 +56,7 @@ export class AgentService {
       // 知识库查询，使用流式处理
       const routerEngine = (this.masterAgent as any).routerEngine;
       const selection = await routerEngine.selectBestDataset(query);
-      
+
       // 创建流式查询
       const index = await this.vectorStoreService.getIndex(selection.dataset);
       const queryEngine = index.asQueryEngine({
@@ -66,7 +67,7 @@ export class AgentService {
       // 我们模拟流式输出
       const response = await queryEngine.query({ query });
       const responseText = response.toString();
-      
+
       // 分块输出
       const chunks = responseText.match(/.{1,50}/g) || [responseText];
       for (const chunk of chunks) {
@@ -74,10 +75,58 @@ export class AgentService {
         await new Promise(resolve => setTimeout(resolve, 50)); // 模拟流式延迟
       }
 
+      // 为了兼容性，创建一个简化的MasterAgentResponse
       return {
         query,
         response: responseText,
-        analysis,
+        decomposition: {
+          originalQuery: query,
+          subQueries: [
+            {
+              id: 'stream-1',
+              query,
+              type: 'knowledge_query',
+              priority: 1,
+              confidence: 0.8,
+              reasoning: '流式查询处理',
+            },
+          ],
+          hasMultipleIntents: false,
+          reasoning: '流式查询处理',
+        },
+        subResults: [
+          {
+            id: 'stream-1',
+            query,
+            type: 'knowledge_query',
+            response: responseText,
+            success: true,
+            executionTime: 0,
+          },
+        ],
+        aggregation: {
+          originalQuery: query,
+          finalResponse: responseText,
+          subResults: [],
+          aggregationReasoning: '流式查询，无需聚合',
+          executionSummary: {
+            totalSubQueries: 1,
+            successfulQueries: 1,
+            failedQueries: 0,
+            totalExecutionTime: 0,
+          },
+        },
+        executionSummary: {
+          totalSubQueries: 1,
+          successfulQueries: 1,
+          failedQueries: 0,
+          totalExecutionTime: 0,
+        },
+        analysis: {
+          queryType: 'single_intent',
+          confidence: 0.8,
+          reasoning: '流式查询处理',
+        },
         selectedDataset: selection.dataset,
         routingReason: selection.reasoning,
       };
