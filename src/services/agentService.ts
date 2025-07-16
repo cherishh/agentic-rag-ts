@@ -1,37 +1,59 @@
 import { agent, agentStreamEvent } from '@llamaindex/workflow';
-import { tool, QueryEngineTool } from 'llamaindex';
+import { tool, Tool, RouterQueryEngine } from 'llamaindex';
 import { z } from 'zod';
 import { VectorStoreService } from './vectorStore';
 import { weatherService } from './weatherService';
+import { RouterService } from './routerService';
 import type { DatasetKey } from './vectorStore';
 
-// 工具函数 - 符合LlamaIndex工具参数结构
+// Tool functions - matching the LlamaIndex tool parameter structure
 export const sumNumbers = ({ a, b }: { a: number; b: number }): number => a + b;
 export const multiplyNumbers = ({ a, b }: { a: number; b: number }): number => a * b;
 
-// 天气查询工具函数
+// Weather query tool function
 export const getWeatherInfo = async ({ city }: { city: string }): Promise<string> => {
   try {
     const weather = await weatherService.getWeather(city);
     return weatherService.formatWeatherInfo(weather);
   } catch (error) {
     if (error instanceof Error) {
-      return `❌ 天气查询失败：${error.message}`;
+      return `❌ Weather query failed: ${error.message}`;
     }
-    return `❌ 天气查询失败：未知错误`;
+    return `❌ Weather query failed: Unknown error`;
   }
 };
 
+/**
+ * This service now acts as the "Master Agent".
+ * It has access to simple tools (calculator, weather) and a specialized
+ * "knowledgeBaseTool" which is powered by a RouterEngine.
+ * It decides whether to use a simple tool or delegate the query to the RouterEngine.
+ */
 export class AgentService {
-  constructor(private vectorStoreService: VectorStoreService) {}
+  private routerEngine?: RouterQueryEngine;
+  private tools: Tool[] = [];
+
+  constructor(
+    private vectorStoreService: VectorStoreService,
+    private routerService: RouterService
+  ) {}
 
   /**
-   * 创建工具集
+   * Initializes the AgentService by creating the RouterEngine and the toolset.
+   * This should be called before running any queries.
    */
-  private async createTools(dataset: DatasetKey) {
-    const index = await this.vectorStoreService.getIndex(dataset);
+  async initialize() {
+    console.log('🔄 Initializing Master Agent (AgentService)...');
+    this.routerEngine = await this.routerService.createRouterEngine();
+    this.tools = this.createTools();
+    console.log('✅ Master Agent (AgentService) initialized successfully.');
+  }
 
-    // 数学工具
+  /**
+   * Creates the toolset for the Master Agent.
+   */
+  private createTools(): Tool[] {
+    // Simple tools
     const addTool = tool({
       name: 'sumNumbers',
       description: 'Use this function to sum two numbers',
@@ -52,7 +74,6 @@ export class AgentService {
       execute: multiplyNumbers,
     });
 
-    // 天气查询工具
     const weatherTool = tool({
       name: 'getWeather',
       description:
@@ -63,24 +84,37 @@ export class AgentService {
       execute: getWeatherInfo,
     });
 
-    // 查询工具
-    const queryTool = index.queryTool({
-      metadata: {
-        name: `${dataset}_query_tool`,
-        description: `This tool can answer detailed questions about the ${dataset} dataset.`,
+    // Specialized Knowledge Base Tool powered by the RouterEngine
+    const knowledgeBaseTool = tool({
+      name: 'knowledgeBaseQuery',
+      description:
+        'Use this tool for complex questions about specific topics like machine learning or price index statistics. Use it when the query is not a simple calculation or weather request.',
+      parameters: z.object({
+        query: z.string({
+          description: 'The detailed question to ask the knowledge base',
+        }),
+      }),
+      execute: async ({ query }) => {
+        if (!this.routerEngine) {
+          throw new Error('RouterEngine is not initialized.');
+        }
+        const result = await this.routerEngine.query({ query });
+        return result.response;
       },
-      options: { similarityTopK: 10 },
     });
 
-    return [addTool, multiplyTool, weatherTool, queryTool];
+    return [addTool, multiplyTool, weatherTool, knowledgeBaseTool];
   }
 
   /**
-   * 运行Agent查询
+   * Runs an agent query.
+   * The `dataset` parameter is no longer needed as the RouterEngine handles selection.
    */
-  async runQuery(query: string, dataset: DatasetKey): Promise<string> {
-    const tools = await this.createTools(dataset);
-    const myAgent = agent({ tools });
+  async runQuery(query: string): Promise<string> {
+    if (this.tools.length === 0) {
+      throw new Error('AgentService is not initialized. Please call initialize() first.');
+    }
+    const myAgent = agent({ tools: this.tools });
 
     let result = '';
     const events = myAgent.runStream(query);
@@ -95,11 +129,14 @@ export class AgentService {
   }
 
   /**
-   * 运行Agent查询（流式输出）
+   * Runs an agent query and streams the output.
+   * The `dataset` parameter is no longer needed.
    */
-  async *runQueryStream(query: string, dataset: DatasetKey): AsyncGenerator<string, void, unknown> {
-    const tools = await this.createTools(dataset);
-    const myAgent = agent({ tools });
+  async *runQueryStream(query: string): AsyncGenerator<string, void, unknown> {
+    if (this.tools.length === 0) {
+      throw new Error('AgentService is not initialized. Please call initialize() first.');
+    }
+    const myAgent = agent({ tools: this.tools });
 
     const events = myAgent.runStream(query);
 

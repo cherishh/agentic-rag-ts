@@ -3,9 +3,10 @@ import { OpenAI, OpenAIEmbedding } from '@llamaindex/openai';
 import { VectorStoreService } from './services/vectorStore';
 import { QueryService } from './services/queryService';
 import { AgentService } from './services/agentService';
+import { RouterService } from './services/routerService'; // Import RouterService
 import { CURRENT_DATASET, DATASET_CONFIGS, OPENAI_CONFIG, EMBEDDING_CONFIG, CHUNKING_CONFIG } from './config';
 
-// 初始化LlamaIndex设置
+// Initialize LlamaIndex settings
 Settings.llm = new OpenAI({
   model: OPENAI_CONFIG.model,
   apiKey: OPENAI_CONFIG.apiKey,
@@ -26,12 +27,13 @@ Settings.nodeParser = new SentenceSplitter({
   paragraphSeparator: CHUNKING_CONFIG.paragraphSeparator,
 });
 
-// 创建服务实例
+// Create service instances
 export const vectorStoreService = new VectorStoreService();
 export const queryService = new QueryService(vectorStoreService);
-export const agentService = new AgentService(vectorStoreService);
+export const routerService = new RouterService(vectorStoreService); // Instantiate RouterService
+export const agentService = new AgentService(vectorStoreService, routerService); // Pass routerService to AgentService
 
-// 应用程序类
+// Application class
 export class RAGApplication {
   constructor(
     private vectorStoreService: VectorStoreService,
@@ -40,23 +42,21 @@ export class RAGApplication {
   ) {}
 
   /**
-   * 初始化应用程序
+   * Initializes the application
    */
   async initialize() {
-    console.log('🚀 初始化RAG应用程序...');
-    console.log(`🎯 当前数据集: ${DATASET_CONFIGS[CURRENT_DATASET].description}`);
-
-    // 预热索引
-    await this.vectorStoreService.getIndex(CURRENT_DATASET);
-    console.log('✅ 应用程序初始化完成');
+    console.log('🚀 Initializing RAG Application...');
+    // No longer need to pre-warm a specific index here, Agent initialization handles its needs.
+    await this.agentService.initialize(); // This will initialize the Master Agent and its tools, including the RouterEngine
+    console.log('✅ Application initialized successfully');
   }
 
   /**
-   * 获取应用程序状态 - 优化版本，避免重复连接
+   * Gets the application status
    */
   async getStatus() {
     try {
-      // 只连接一次索引，用于两个检查
+      // Check the health of the default dataset's index as a proxy for system health
       await this.vectorStoreService.getIndex(CURRENT_DATASET);
 
       const health = {
@@ -105,7 +105,7 @@ export class RAGApplication {
   }
 
   /**
-   * 执行查询
+   * Executes a query
    */
   async query(
     query: string,
@@ -122,7 +122,7 @@ export class RAGApplication {
   }
 
   /**
-   * 执行检索
+   * Executes a retrieval
    */
   async retrieve(
     query: string,
@@ -135,21 +135,21 @@ export class RAGApplication {
   }
 
   /**
-   * Agent查询
+   * Agent query - dataset parameter is no longer needed.
    */
-  async agentQuery(query: string, dataset = CURRENT_DATASET) {
-    return await this.agentService.runQuery(query, dataset);
+  async agentQuery(query: string) {
+    return await this.agentService.runQuery(query);
   }
 
   /**
-   * Agent流式查询
+   * Agent stream query - dataset parameter is no longer needed.
    */
-  agentQueryStream(query: string, dataset = CURRENT_DATASET) {
-    return this.agentService.runQueryStream(query, dataset);
+  agentQueryStream(query: string) {
+    return this.agentService.runQueryStream(query);
   }
 
   /**
-   * 跨数据集查询
+   * Cross-dataset query
    */
   async crossDatasetQuery(query: string, datasets?: Array<keyof typeof DATASET_CONFIGS>) {
     return await this.vectorStoreService.queryMultipleDatasets(
@@ -159,14 +159,14 @@ export class RAGApplication {
   }
 
   /**
-   * 深度诊断 - 包含实际查询测试（较慢，用于故障排查）
+   * Deep diagnosis
    */
   async diagnose(dataset = CURRENT_DATASET) {
     return await this.vectorStoreService.checkHealthDeep(dataset);
   }
 
   /**
-   * 管理功能
+   * Management functions
    */
   async rebuildIndex(dataset = CURRENT_DATASET) {
     return await this.vectorStoreService.createNewIndex(dataset);
