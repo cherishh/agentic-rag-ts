@@ -16,6 +16,16 @@ export interface QueryDecompositionResult {
   reasoning: string;
 }
 
+// LLM响应中的子查询结构
+interface ParsedSubQuery {
+  id?: string;
+  query?: string;
+  type?: 'knowledge_query' | 'math_calculation' | 'weather_query';
+  priority?: number;
+  confidence?: number;
+  reasoning?: string;
+}
+
 export class QueryDecomposer {
   /**
    * 分解复合查询为多个子查询
@@ -113,12 +123,12 @@ export class QueryDecomposer {
       const parsed = JSON.parse(jsonMatch[0]);
 
       // 验证必需字段
-      if (!parsed.hasMultipleIntents || !parsed.subQueries || !Array.isArray(parsed.subQueries)) {
+      if (parsed.hasMultipleIntents === undefined || !parsed.subQueries || !Array.isArray(parsed.subQueries)) {
         throw new Error('LLM响应缺少必需字段');
       }
 
       // 为每个子查询添加唯一ID（如果没有的话）
-      const subQueries: SubQuery[] = parsed.subQueries.map((sq: any, index: number) => ({
+      const subQueries: SubQuery[] = parsed.subQueries.map((sq: ParsedSubQuery, index: number) => ({
         id: sq.id || `sub-${Date.now()}-${index}`,
         query: sq.query || originalQuery,
         type: sq.type || 'knowledge_query',

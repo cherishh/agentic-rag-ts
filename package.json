@@ -6,13 +6,12 @@
   "private": true,
   "scripts": {
     "clean": "rm -rf ./out && echo 'Done.'",
-    "dev:watch": "bun --watch run ./src/main.ts",
-    "dev": "bun run ./src/main.ts",
-    "build": "bun build ./src/index.ts --outdir ./out --target bun",
     "server": "bun run ./src/index.ts",
     "server:watch": "bun --watch run ./src/index.ts",
     "server:prod": "NODE_ENV=production bun run ./src/index.ts",
-    "test:vectorstore": "bun run ./src/tests/vectorStore.test.ts"
+    "build": "bun build ./src/index.ts --outdir ./out --target bun",
+    "test:vectorstore": "bun run ./src/tests/vectorStore.test.ts",
+    "test:api": "bun run ./test-api.js"
   },
   "devDependencies": {
     "@types/bun": "latest"

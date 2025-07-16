@@ -2,7 +2,8 @@ import { VectorStoreService } from './vectorStore';
 import { QueryDecomposer } from './queryDecomposer';
 import { SubAgentExecutor } from './subAgentExecutor';
 import { ResultAggregator } from './resultAggregator';
-import type { QueryDecompositionResult } from './queryDecomposer';
+import { Logger } from './logger';
+import type { QueryDecompositionResult, SubQuery } from './queryDecomposer';
 import type { SubQueryResult } from './subAgentExecutor';
 import type { AggregatedResult } from './resultAggregator';
 
@@ -40,19 +41,27 @@ export class MasterAgent {
   async processQuery(query: string): Promise<MasterAgentResponse> {
     try {
       // 1. 分解查询
-      console.log('🔍 开始分解查询:', query);
+      Logger.progress('MasterAgent', '开始分解查询', query);
       const decomposition = await this.queryDecomposer.decomposeQuery(query);
-      console.log('📋 查询分解结果:', decomposition);
+      Logger.info('MasterAgent', '查询分解结果', {
+        hasMultipleIntents: decomposition.hasMultipleIntents,
+        subQueriesCount: decomposition.subQueries.length,
+      });
 
       // 2. 执行子查询
-      console.log('⚡ 开始执行子查询...');
+      Logger.progress('MasterAgent', '开始执行子查询');
       const subResults = await this.subAgentExecutor.executeSubQueries(decomposition.subQueries);
-      console.log('✅ 子查询执行完成:', subResults);
+      Logger.success('MasterAgent', '子查询执行完成', {
+        total: subResults.length,
+        successful: subResults.filter(r => r.success).length,
+      });
 
       // 3. 聚合结果
-      console.log('🔄 开始聚合结果...');
+      Logger.progress('MasterAgent', '开始聚合结果');
       const aggregation = await this.resultAggregator.aggregateResults(query, subResults);
-      console.log('🎯 结果聚合完成:', aggregation);
+      Logger.success('MasterAgent', '结果聚合完成', {
+        totalExecutionTime: aggregation.executionSummary.totalExecutionTime,
+      });
 
       // 4. 构造向后兼容的分析结果
       const analysis = {
@@ -125,7 +134,7 @@ export class MasterAgent {
   /**
    * 计算整体置信度
    */
-  private calculateOverallConfidence(subQueries: any[]): number {
+  private calculateOverallConfidence(subQueries: SubQuery[]): number {
     if (subQueries.length === 0) return 0;
 
     const totalConfidence = subQueries.reduce((sum, sq) => sum + sq.confidence, 0);

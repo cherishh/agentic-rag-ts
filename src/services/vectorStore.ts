@@ -5,6 +5,34 @@ import { DATASET_CONFIGS, QDRANT_CONFIG } from '../config';
 
 export type DatasetKey = keyof typeof DATASET_CONFIGS;
 
+// Qdrant 客户端相关类型定义
+interface QdrantCollectionInfo {
+  status?: string;
+  optimizer_status?: string;
+  vectors_count?: number;
+  indexed_vectors_count?: number;
+  points_count?: number;
+  segments_count?: number;
+  config?: {
+    params?: {
+      vectors?: Record<string, unknown>;
+      shard_number?: number;
+      replication_factor?: number;
+    };
+  };
+}
+
+interface QdrantCollectionsResponse {
+  collections?: Array<{
+    name: string;
+  }>;
+}
+
+interface QdrantClientMethods {
+  getCollectionInfo(collectionName: string): Promise<QdrantCollectionInfo>;
+  getCollections(): Promise<QdrantCollectionsResponse>;
+}
+
 export class VectorStoreService {
   /**
    * 创建向量存储实例 - 轻量级连接，无需缓存
@@ -88,15 +116,16 @@ export class VectorStoreService {
         collectionName,
       });
 
-      const client = (vectorStore as any).client();
+      const client = (vectorStore as any).client() as QdrantClientMethods;
 
       // 方法1: 尝试获取collection信息
       try {
         const collectionInfo = await client.getCollectionInfo(collectionName);
         console.log(`🔍 Collection ${collectionName} 信息:`, JSON.stringify(collectionInfo, null, 2));
         return true;
-      } catch (infoError: any) {
-        console.log(`ℹ️  getCollectionInfo 失败: ${infoError.message}`);
+      } catch (infoError: unknown) {
+        const errorMessage = infoError instanceof Error ? infoError.message : '未知错误';
+        console.log(`ℹ️  getCollectionInfo 失败: ${errorMessage}`);
 
         // 方法2: 列出所有collections进行检查
         try {
@@ -105,21 +134,21 @@ export class VectorStoreService {
 
           // 检查 collections 的结构
           if (collections && collections.collections) {
-            const exists = collections.collections.some(
-              (col: any) => col.name === collectionName || col === collectionName
-            );
+            const exists = collections.collections.some((col: { name: string }) => col.name === collectionName);
             console.log(`🔍 通过列表检查 Collection ${collectionName} 存在状态: ${exists}`);
             return exists;
           }
 
           return false;
-        } catch (listError: any) {
-          console.log(`ℹ️  getCollections 也失败: ${listError.message}`);
+        } catch (listError: unknown) {
+          const listErrorMessage = listError instanceof Error ? listError.message : '未知错误';
+          console.log(`ℹ️  getCollections 也失败: ${listErrorMessage}`);
           return false;
         }
       }
-    } catch (error: any) {
-      console.error(`❌ checkCollectionExists 彻底失败:`, error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      console.error(`❌ checkCollectionExists 彻底失败:`, errorMessage);
       return false;
     }
   }

@@ -59,3 +59,10 @@ export const CHUNKING_CONFIG = {
 export const RETRIEVAL_CONFIG = {
   similarityTopK: 5,
 };
+
+// 日志配置
+export const LOG_CONFIG = {
+  level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'warn' : 'info'),
+  enableConsole: process.env.LOG_CONSOLE !== 'false',
+  enableTimestamp: process.env.LOG_TIMESTAMP !== 'false',
+};

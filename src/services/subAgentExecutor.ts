@@ -1,6 +1,7 @@
 import { VectorStoreService } from './vectorStore';
 import { RouterEngine } from './routerEngine';
 import { sumNumbers, multiplyNumbers, getWeatherInfo } from './agentService';
+import { Logger } from './logger';
 import type { SubQuery } from './queryDecomposer';
 
 export interface SubQueryResult {
@@ -65,17 +66,40 @@ export class SubAgentExecutor {
   }
 
   /**
-   * 批量执行子查询
+   * 批量执行子查询 - 并行执行优化
    */
   async executeSubQueries(subQueries: SubQuery[]): Promise<SubQueryResult[]> {
-    const results: SubQueryResult[] = [];
-
-    // 按优先级顺序执行（目前是串行，可以改为并行）
-    for (const subQuery of subQueries) {
-      const result = await this.executeSubQuery(subQuery);
-      results.push(result);
+    if (subQueries.length === 0) {
+      return [];
     }
 
+    // 按优先级排序子查询
+    const sortedQueries = [...subQueries].sort((a, b) => a.priority - b.priority);
+
+    Logger.info('SubAgentExecutor', `开始并行执行 ${sortedQueries.length} 个子查询`);
+
+    // 并行执行所有子查询
+    const results = await Promise.all(
+      sortedQueries.map(async (subQuery, index) => {
+        Logger.progress(
+          'SubAgentExecutor',
+          `开始执行子查询 ${index + 1}/${sortedQueries.length}: ${subQuery.type}`,
+          subQuery.query
+        );
+        const result = await this.executeSubQuery(subQuery);
+
+        if (result.success) {
+          Logger.success('SubAgentExecutor', `子查询 ${index + 1} 完成: ${subQuery.type}`, `${result.executionTime}ms`);
+        } else {
+          Logger.error('SubAgentExecutor', `子查询 ${index + 1} 失败: ${subQuery.type}`, result.error);
+        }
+
+        return result;
+      })
+    );
+
+    const successCount = results.filter(r => r.success).length;
+    Logger.success('SubAgentExecutor', `所有子查询执行完成，成功: ${successCount}/${results.length}`);
     return results;
   }
 

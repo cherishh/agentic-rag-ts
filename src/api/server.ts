@@ -8,6 +8,34 @@ import { DATASET_CONFIGS } from '../config';
 import type { DatasetKey } from '../services/vectorStore';
 import { setupDocs } from './docs';
 
+// 响应辅助函数
+function successResponse(data: any, meta?: any) {
+  return {
+    success: true,
+    data,
+    ...(meta && { meta }),
+    timestamp: new Date().toISOString(),
+  };
+}
+
+function errorResponse(message: string, error?: string, statusCode: number = 500) {
+  return {
+    success: false,
+    error: message,
+    ...(error && { message: error }),
+    timestamp: new Date().toISOString(),
+  };
+}
+
+function validateParams(body: any, required: string[]): string | null {
+  for (const param of required) {
+    if (!body[param]) {
+      return `${param} 参数是必需的`;
+    }
+  }
+  return null;
+}
+
 // 创建 Hono 应用
 const api = new Hono();
 
@@ -22,14 +50,7 @@ setupDocs(api);
 // 错误处理中间件
 api.onError((err, c) => {
   console.error('API错误:', err);
-  return c.json(
-    {
-      error: '服务器内部错误',
-      message: err.message,
-      timestamp: new Date().toISOString(),
-    },
-    500
-  );
+  return c.json(errorResponse('服务器内部错误', err.message), 500);
 });
 
 // 健康检查
@@ -45,41 +66,18 @@ api.get('/health', c => {
 api.get('/status', async c => {
   try {
     const status = await app.getStatus();
-    return c.json({
-      success: true,
-      data: status,
-      timestamp: new Date().toISOString(),
-    });
+    return c.json(successResponse(status));
   } catch (error: any) {
-    return c.json(
-      {
-        success: false,
-        error: '获取状态失败',
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      },
-      500
-    );
+    return c.json(errorResponse('获取状态失败', error.message), 500);
   }
 });
 
 api.get('/diagnose', async c => {
   try {
     const result = await app.diagnose();
-    return c.json({
-      success: true,
-      data: result,
-    });
+    return c.json(successResponse(result));
   } catch (error: any) {
-    return c.json(
-      {
-        success: false,
-        error: '诊断失败',
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      },
-      500
-    );
+    return c.json(errorResponse('诊断失败', error.message), 500);
   }
 });
 
@@ -92,76 +90,56 @@ api.get('/datasets', c => {
     dataPath: config.dataPath,
   }));
 
-  return c.json({
-    success: true,
-    data: {
+  return c.json(
+    successResponse({
       datasets,
       total: datasets.length,
-    },
-    timestamp: new Date().toISOString(),
-  });
+    })
+  );
 });
 
 // 智能查询 - 专门的智能路由接口
 api.post('/intelligent-query', async c => {
   try {
     const body = await c.req.json();
-    const { query } = body;
+    const validation = validateParams(body, ['query']);
 
-    if (!query) {
-      return c.json(
-        {
-          success: false,
-          error: '缺少必需参数',
-          message: 'query 参数是必需的',
-          timestamp: new Date().toISOString(),
-        },
-        400
-      );
+    if (validation) {
+      return c.json(errorResponse('缺少必需参数', validation), 400);
     }
 
-    const result = await app.intelligentQuery(query);
+    const result = await app.intelligentQuery(body.query);
 
-    return c.json({
-      success: true,
-      data: {
-        query: result.query,
-        response: result.response,
-        analysis: result.analysis,
-        selectedDataset: result.selectedDataset,
-        routingReason: result.routingReason,
-        // 新增详细信息
-        decomposition: result.decomposition,
-        subResults: result.subResults,
-        executionSummary: result.executionSummary,
-      },
-      meta: {
-        type: 'intelligent',
-        routing: {
-          queryType: result.analysis.queryType,
-          confidence: result.analysis.confidence,
-          reasoning: result.analysis.reasoning,
-        },
-        // 新增执行统计
-        performance: {
-          totalSubQueries: result.executionSummary.totalSubQueries,
-          successfulQueries: result.executionSummary.successfulQueries,
-          failedQueries: result.executionSummary.failedQueries,
-          totalExecutionTime: result.executionSummary.totalExecutionTime,
-        },
-      },
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error: any) {
     return c.json(
-      {
-        success: false,
-        error: '智能查询失败',
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      },
-      500
+      successResponse(
+        {
+          query: result.query,
+          response: result.response,
+          analysis: result.analysis,
+          selectedDataset: result.selectedDataset,
+          routingReason: result.routingReason,
+          decomposition: result.decomposition,
+          subResults: result.subResults,
+          executionSummary: result.executionSummary,
+        },
+        {
+          type: 'intelligent',
+          routing: {
+            queryType: result.analysis.queryType,
+            confidence: result.analysis.confidence,
+            reasoning: result.analysis.reasoning,
+          },
+          performance: {
+            totalSubQueries: result.executionSummary.totalSubQueries,
+            successfulQueries: result.executionSummary.successfulQueries,
+            failedQueries: result.executionSummary.failedQueries,
+            totalExecutionTime: result.executionSummary.totalExecutionTime,
+          },
+        }
+      )
     );
+  } catch (error: any) {
+    return c.json(errorResponse('智能查询失败', error.message), 500);
   }
 });
 
@@ -169,17 +147,10 @@ api.post('/intelligent-query', async c => {
 api.post('/intelligent-query/stream', async c => {
   try {
     const body = await c.req.json();
-    const { query } = body;
+    const validation = validateParams(body, ['query']);
 
-    if (!query) {
-      return c.json(
-        {
-          success: false,
-          error: '缺少必需参数',
-          message: 'query 参数是必需的',
-        },
-        400
-      );
+    if (validation) {
+      return c.json(errorResponse('缺少必需参数', validation), 400);
     }
 
     // 创建可读流
@@ -194,7 +165,7 @@ api.post('/intelligent-query/stream', async c => {
           controller.enqueue(new TextEncoder().encode(startMessage));
 
           // 获取智能查询流并处理
-          const intelligentStream = app.intelligentQueryStream(query);
+          const intelligentStream = app.intelligentQueryStream(body.query);
           for await (const chunk of intelligentStream) {
             const chunkMessage = `data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`;
             controller.enqueue(new TextEncoder().encode(chunkMessage));
@@ -223,15 +194,7 @@ api.post('/intelligent-query/stream', async c => {
       },
     });
   } catch (error: any) {
-    return c.json(
-      {
-        success: false,
-        error: '流式智能查询失败',
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      },
-      500
-    );
+    return c.json(errorResponse('流式智能查询失败', error.message), 500);
   }
 });
 
@@ -239,42 +202,23 @@ api.post('/intelligent-query/stream', async c => {
 api.post('/cross-query', async c => {
   try {
     const body = await c.req.json();
-    const { query, datasets } = body;
+    const validation = validateParams(body, ['query']);
 
-    if (!query) {
-      return c.json(
-        {
-          success: false,
-          error: '缺少必需参数',
-          message: 'query 参数是必需的',
-          timestamp: new Date().toISOString(),
-        },
-        400
-      );
+    if (validation) {
+      return c.json(errorResponse('缺少必需参数', validation), 400);
     }
 
-    const result = await app.crossDatasetQuery(query, datasets);
+    const result = await app.crossDatasetQuery(body.query, body.datasets);
 
-    return c.json({
-      success: true,
-      data: result,
-      meta: {
-        query,
-        datasets: datasets || ['price_index_statistics', 'machine_learning'],
-        type: 'cross-dataset',
-      },
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error: any) {
     return c.json(
-      {
-        success: false,
-        error: '跨数据集查询失败',
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      },
-      500
+      successResponse(result, {
+        query: body.query,
+        datasets: body.datasets || ['price_index_statistics', 'machine_learning'],
+        type: 'cross-dataset',
+      })
     );
+  } catch (error: any) {
+    return c.json(errorResponse('跨数据集查询失败', error.message), 500);
   }
 });
 
@@ -282,28 +226,18 @@ api.post('/cross-query', async c => {
 api.post('/rebuild', async c => {
   try {
     const body = await c.req.json();
-    const { dataset = 'price_index_statistics' } = body;
+    const dataset = body.dataset || 'price_index_statistics';
 
     await app.rebuildIndex(dataset as DatasetKey);
 
-    return c.json({
-      success: true,
-      data: {
+    return c.json(
+      successResponse({
         message: `数据集 ${dataset} 的索引重建完成`,
         dataset,
-      },
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error: any) {
-    return c.json(
-      {
-        success: false,
-        error: '重建索引失败',
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      },
-      500
+      })
     );
+  } catch (error: any) {
+    return c.json(errorResponse('重建索引失败', error.message), 500);
   }
 });
 
@@ -311,43 +245,25 @@ api.post('/rebuild', async c => {
 api.delete('/collection', async c => {
   try {
     const body = await c.req.json();
-    const { dataset = 'price_index_statistics' } = body;
+    const dataset = body.dataset || 'price_index_statistics';
 
     const result = await app.deleteCollection(dataset as DatasetKey);
 
-    return c.json({
-      success: true,
-      data: {
+    return c.json(
+      successResponse({
         message: `数据集 ${dataset} 的collection删除${result ? '成功' : '失败'}`,
         dataset,
         deleted: result,
-      },
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error: any) {
-    return c.json(
-      {
-        success: false,
-        error: '删除collection失败',
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      },
-      500
+      })
     );
+  } catch (error: any) {
+    return c.json(errorResponse('删除collection失败', error.message), 500);
   }
 });
 
 // 404处理
 api.notFound(c => {
-  return c.json(
-    {
-      success: false,
-      error: '端点不存在',
-      message: `路径 ${c.req.path} 不存在`,
-      timestamp: new Date().toISOString(),
-    },
-    404
-  );
+  return c.json(errorResponse('端点不存在', `路径 ${c.req.path} 不存在`), 404);
 });
 
 export { api };
