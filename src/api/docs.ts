@@ -32,7 +32,10 @@ export function setupDocs(api: Hono) {
       <h1>🤖 Agentic RAG API 文档</h1>
       <p class="description">
         基于 LlamaIndex.TS + Qdrant Cloud + OpenAI 的智能检索增强生成API服务。
-        支持多数据集管理、基础RAG查询、Agentic查询等功能。
+        支持普通 RAG 检索、工具调用、多意图识别、多步骤推理、多数据集查询
+      </p>
+      <p class="description">
+        在线体验：<a href="https://agentic-rag-fe-chi.vercel.app/" target="_blank">https://agentic-rag-fe-chi.vercel.app/</a>
       </p>
       
       <div class="endpoint">
