@@ -4,6 +4,7 @@ import { VectorStoreService } from './services/vectorStore';
 import { QueryService } from './services/queryService';
 import { AgentService } from './services/agentService';
 import { CURRENT_DATASET, DATASET_CONFIGS, OPENAI_CONFIG, EMBEDDING_CONFIG, CHUNKING_CONFIG } from './config';
+import type { DatasetKey } from './services/vectorStore';
 
 // 初始化LlamaIndex设置
 Settings.llm = new OpenAI({
@@ -105,11 +106,25 @@ export class RAGApplication {
   }
 
   /**
-   * 执行查询
+   * 智能查询 - 使用Master Agent自动路由
+   */
+  async intelligentQuery(query: string) {
+    return await this.agentService.runIntelligentQuery(query);
+  }
+
+  /**
+   * 智能查询（流式输出）- 使用Master Agent自动路由
+   */
+  intelligentQueryStream(query: string) {
+    return this.agentService.runIntelligentQueryStream(query);
+  }
+
+  /**
+   * 执行查询 - 新版本使用智能路由，保持兼容性
    */
   async query(
     query: string,
-    dataset = CURRENT_DATASET,
+    dataset?: DatasetKey,
     options: {
       similarityTopK?: number;
       includeSourceNodes?: boolean;
@@ -118,34 +133,73 @@ export class RAGApplication {
       includeSourceNodes: true,
     }
   ) {
-    return await this.queryService.query(query, dataset, options);
+    if (dataset) {
+      // 如果指定了数据集，使用传统方式
+      return await this.queryService.query(query, dataset, options);
+    } else {
+      // 否则使用智能路由
+      const intelligentResult = await this.intelligentQuery(query);
+      return {
+        query: intelligentResult.query,
+        response: intelligentResult.response,
+        // 转换为兼容格式
+        sourceNodes: [], // 暂时为空，后续可以改进
+        meta: {
+          selectedDataset: intelligentResult.selectedDataset,
+          routingReason: intelligentResult.routingReason,
+          analysis: intelligentResult.analysis,
+        },
+      };
+    }
   }
 
   /**
-   * 执行检索
+   * 执行检索 - 新版本使用智能路由，保持兼容性
    */
   async retrieve(
     query: string,
-    dataset = CURRENT_DATASET,
+    dataset?: DatasetKey,
     options?: {
       similarityTopK?: number;
     }
   ) {
-    return await this.queryService.retrieve(query, dataset, options);
+    if (dataset) {
+      // 如果指定了数据集，使用传统方式
+      return await this.queryService.retrieve(query, dataset, options);
+    } else {
+      // 否则使用智能路由选择数据集
+      const intelligentResult = await this.intelligentQuery(query);
+      // 然后用选定的数据集进行检索
+      const selectedDataset = intelligentResult.analysis.domain as DatasetKey || 'price_index_statistics';
+      return await this.queryService.retrieve(query, selectedDataset, options);
+    }
   }
 
   /**
-   * Agent查询
+   * Agent查询 - 新版本使用智能路由，保持兼容性
    */
-  async agentQuery(query: string, dataset = CURRENT_DATASET) {
-    return await this.agentService.runQuery(query, dataset);
+  async agentQuery(query: string, dataset?: DatasetKey) {
+    if (dataset) {
+      // 如果指定了数据集，使用传统方式
+      return await this.agentService.runQuery(query, dataset);
+    } else {
+      // 否则使用智能路由
+      const result = await this.intelligentQuery(query);
+      return result.response;
+    }
   }
 
   /**
-   * Agent流式查询
+   * Agent流式查询 - 新版本使用智能路由，保持兼容性
    */
-  agentQueryStream(query: string, dataset = CURRENT_DATASET) {
-    return this.agentService.runQueryStream(query, dataset);
+  agentQueryStream(query: string, dataset?: DatasetKey) {
+    if (dataset) {
+      // 如果指定了数据集，使用传统方式
+      return this.agentService.runQueryStream(query, dataset);
+    } else {
+      // 否则使用智能路由
+      return this.intelligentQueryStream(query);
+    }
   }
 
   /**

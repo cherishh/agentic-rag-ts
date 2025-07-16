@@ -3,7 +3,9 @@ import { tool, QueryEngineTool } from 'llamaindex';
 import { z } from 'zod';
 import { VectorStoreService } from './vectorStore';
 import { weatherService } from './weatherService';
+import { MasterAgent } from './masterAgent';
 import type { DatasetKey } from './vectorStore';
+import type { MasterAgentResponse } from './masterAgent';
 
 // 工具函数 - 符合LlamaIndex工具参数结构
 export const sumNumbers = ({ a, b }: { a: number; b: number }): number => a + b;
@@ -23,10 +25,67 @@ export const getWeatherInfo = async ({ city }: { city: string }): Promise<string
 };
 
 export class AgentService {
-  constructor(private vectorStoreService: VectorStoreService) {}
+  private masterAgent: MasterAgent;
+
+  constructor(private vectorStoreService: VectorStoreService) {
+    this.masterAgent = new MasterAgent(vectorStoreService);
+  }
 
   /**
-   * 创建工具集
+   * 智能Agent查询 - 使用Master Agent进行路由
+   */
+  async runIntelligentQuery(query: string): Promise<MasterAgentResponse> {
+    return await this.masterAgent.processQuery(query);
+  }
+
+  /**
+   * 智能Agent查询（流式输出）
+   */
+  async *runIntelligentQueryStream(query: string): AsyncGenerator<string, MasterAgentResponse, unknown> {
+    // 对于流式输出，我们需要特殊处理
+    // 先分析查询类型，然后决定如何处理
+    const analysis = await (this.masterAgent as any).analyzeQueryIntent(query);
+    
+    if (analysis.queryType === 'direct_tool') {
+      // 直接工具调用，一次性返回结果
+      const result = await this.masterAgent.processQuery(query);
+      yield result.response;
+      return result;
+    } else {
+      // 知识库查询，使用流式处理
+      const routerEngine = (this.masterAgent as any).routerEngine;
+      const selection = await routerEngine.selectBestDataset(query);
+      
+      // 创建流式查询
+      const index = await this.vectorStoreService.getIndex(selection.dataset);
+      const queryEngine = index.asQueryEngine({
+        retriever: index.asRetriever({ similarityTopK: 5 }),
+      });
+
+      // 这里简化处理，实际LlamaIndex可能不直接支持流式QueryEngine
+      // 我们模拟流式输出
+      const response = await queryEngine.query({ query });
+      const responseText = response.toString();
+      
+      // 分块输出
+      const chunks = responseText.match(/.{1,50}/g) || [responseText];
+      for (const chunk of chunks) {
+        yield chunk;
+        await new Promise(resolve => setTimeout(resolve, 50)); // 模拟流式延迟
+      }
+
+      return {
+        query,
+        response: responseText,
+        analysis,
+        selectedDataset: selection.dataset,
+        routingReason: selection.reasoning,
+      };
+    }
+  }
+
+  /**
+   * 创建工具集 - 保留原有方法用于兼容性
    */
   private async createTools(dataset: DatasetKey) {
     const index = await this.vectorStoreService.getIndex(dataset);
@@ -76,7 +135,7 @@ export class AgentService {
   }
 
   /**
-   * 运行Agent查询
+   * 运行Agent查询 - 保留原有方法用于兼容性
    */
   async runQuery(query: string, dataset: DatasetKey): Promise<string> {
     const tools = await this.createTools(dataset);
@@ -95,7 +154,7 @@ export class AgentService {
   }
 
   /**
-   * 运行Agent查询（流式输出）
+   * 运行Agent查询（流式输出）- 保留原有方法用于兼容性
    */
   async *runQueryStream(query: string, dataset: DatasetKey): AsyncGenerator<string, void, unknown> {
     const tools = await this.createTools(dataset);

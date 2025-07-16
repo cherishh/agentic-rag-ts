@@ -102,11 +102,11 @@ api.get('/datasets', c => {
   });
 });
 
-// 基础查询
+// 基础查询 - 使用智能路由
 api.post('/query', async c => {
   try {
     const body = await c.req.json();
-    const { query, dataset = 'price_index_statistics', options = {} } = body;
+    const { query, dataset, options = {} } = body;
 
     if (!query) {
       return c.json(
@@ -129,9 +129,11 @@ api.post('/query', async c => {
       success: true,
       data: result,
       meta: {
-        dataset,
         query,
         options,
+        // 新增智能路由信息
+        intelligentRouting: !dataset,
+        requestedDataset: dataset,
       },
       timestamp: new Date().toISOString(),
     });
@@ -148,11 +150,11 @@ api.post('/query', async c => {
   }
 });
 
-// 文档检索（不生成回答）
+// 文档检索（不生成回答）- 使用智能路由
 api.post('/retrieve', async c => {
   try {
     const body = await c.req.json();
-    const { query, dataset = 'price_index_statistics', options = {} } = body;
+    const { query, dataset, options = {} } = body;
 
     if (!query) {
       return c.json(
@@ -172,9 +174,11 @@ api.post('/retrieve', async c => {
       success: true,
       data: result,
       meta: {
-        dataset,
         query,
         options,
+        // 新增智能路由信息
+        intelligentRouting: !dataset,
+        requestedDataset: dataset,
       },
       timestamp: new Date().toISOString(),
     });
@@ -191,11 +195,11 @@ api.post('/retrieve', async c => {
   }
 });
 
-// Agent查询
+// Agent查询 - 使用智能路由
 api.post('/agent', async c => {
   try {
     const body = await c.req.json();
-    const { query, dataset = 'price_index_statistics' } = body;
+    const { query, dataset } = body;
 
     if (!query) {
       return c.json(
@@ -218,8 +222,10 @@ api.post('/agent', async c => {
         response: result,
       },
       meta: {
-        dataset,
         type: 'agent',
+        // 新增智能路由信息
+        intelligentRouting: !dataset,
+        requestedDataset: dataset,
       },
       timestamp: new Date().toISOString(),
     });
@@ -236,11 +242,11 @@ api.post('/agent', async c => {
   }
 });
 
-// 流式Agent查询
+// 流式Agent查询 - 使用智能路由
 api.post('/agent/stream', async c => {
   try {
     const body = await c.req.json();
-    const { query, dataset = 'price_index_statistics' } = body;
+    const { query, dataset } = body;
 
     if (!query) {
       return c.json(
@@ -258,7 +264,14 @@ api.post('/agent/stream', async c => {
       async start(controller) {
         try {
           // 发送开始消息
-          const startMessage = `data: ${JSON.stringify({ type: 'start', message: '开始生成回答...' })}\n\n`;
+          const startMessage = `data: ${JSON.stringify({ 
+            type: 'start', 
+            message: '开始生成回答...',
+            meta: {
+              intelligentRouting: !dataset,
+              requestedDataset: dataset,
+            }
+          })}\n\n`;
           controller.enqueue(new TextEncoder().encode(startMessage));
 
           // 获取 Agent 流并处理
@@ -295,6 +308,58 @@ api.post('/agent/stream', async c => {
       {
         success: false,
         error: '流式查询失败',
+        message: error.message,
+        timestamp: new Date().toISOString(),
+      },
+      500
+    );
+  }
+});
+
+// 智能查询 - 专门的智能路由接口
+api.post('/intelligent-query', async c => {
+  try {
+    const body = await c.req.json();
+    const { query } = body;
+
+    if (!query) {
+      return c.json(
+        {
+          success: false,
+          error: '缺少必需参数',
+          message: 'query 参数是必需的',
+          timestamp: new Date().toISOString(),
+        },
+        400
+      );
+    }
+
+    const result = await app.intelligentQuery(query);
+
+    return c.json({
+      success: true,
+      data: {
+        query: result.query,
+        response: result.response,
+        analysis: result.analysis,
+        selectedDataset: result.selectedDataset,
+        routingReason: result.routingReason,
+      },
+      meta: {
+        type: 'intelligent',
+        routing: {
+          queryType: result.analysis.queryType,
+          confidence: result.analysis.confidence,
+          reasoning: result.analysis.reasoning,
+        },
+      },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    return c.json(
+      {
+        success: false,
+        error: '智能查询失败',
         message: error.message,
         timestamp: new Date().toISOString(),
       },
